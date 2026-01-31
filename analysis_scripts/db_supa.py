@@ -188,10 +188,10 @@ def supa_delete_all_records(table_name) -> Tuple[bool, int]:
         row_count = 0
         if results.data and results.data['deleted_count']:
             row_count = results.data['deleted_count']
-        logger.info(f"deleted {row_count} rows from {results.data['table_name']}. id to start from 1")
+        logger.info(f"supa_delete_all_records. Deleted {row_count} rows from {results.data['table_name']}. id to start from 1")
         return True, row_count
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"supa_delete_all_records: Error: {e}")
         return False, 0
 
 ##############################################################################

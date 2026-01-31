@@ -72,10 +72,10 @@ def _normalize_supa_rows(rows: Any) -> list[dict]:
 ##################################################################################################
 def supa_insert_to_db(table_name: str, rows: Any) -> Tuple[bool, int]:
     if not rows:
-        print("supa_insert_to_db: No records found")
+        logger.info("supa_insert_to_db: No records found")
         return False, 0
     if not table_name:
-        print("supa_insert_to_db: No tablename")
+        logger.error("supa_insert_to_db: No tablename")
         return False, 0
     try:
         payload = _normalize_supa_rows(rows)

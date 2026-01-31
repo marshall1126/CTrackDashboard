@@ -3,27 +3,18 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-venv/
+
+# Private
 .env
 serviceAccountKey.json
-newsreader.wpr
-newsreader.wpu
 *.log
 *.zip
+jsondata/
 
-# Virtual environment files
-Include/
-Lib/
-Scripts/
-temp/
-pyvenv.cfg
-
-# Playwright browser binaries (not needed in GitHub)
-.playwright/
-node_modules/
-playwright-report/
-test-results/
+# Virtual environments (only these paths)
+.venv/
+venv/
+env/
 
 # IDE and system files
 .DS_Store
@@ -36,4 +27,3 @@ test-results/
 # Database files
 *.sqlite3
 *.db
-serviceAccountKey.json

@@ -113,9 +113,12 @@ class Analysis:
         try:
             # read the final stories table
             status, supa_stories = read_all_final_stories(limit=99)
-            if not status or not supa_stories:
-                logger.info ("preprocess: No stories found")
+            if not status:
+                logger.info (f"preprocess: Error {constants.TableNames.TBL_STORIES_ALL_FINAL}")
                 return False, []
+            if not supa_stories:
+                logger.info ("preprocess: No stories found")
+                return True, []            
             
             # eliminate any story where success flag is false
             # Keep only successful stories
@@ -351,7 +354,12 @@ class Analysis:
         except Exception as e:
             logger.error(f"insert_neondb: Error encountered. {e}")
             return False
-            
+    
+    
+    ########################################################################################
+    # RUN_ANALYSIS
+    # returns: True if processing completed successfully, False if error encountered
+    ########################################################################################
     def run_analysis(self, max_concurrency: int = 5):
         try:
             print ("run analysis entered")
@@ -370,7 +378,7 @@ class Analysis:
                 return False
             if not story_list or len(story_list) == 0:
                 logger.info("No stories found")
-                return False
+                return True
             
             # Create a list of policy analysis data to evaluate
             policy_list: list[PolicyAnalysisData] = []

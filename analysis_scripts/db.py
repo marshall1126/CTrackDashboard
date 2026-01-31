@@ -62,7 +62,7 @@ def load_from_jsonl(
         for item in items:
             if not isinstance(item, dict):
                 errmsg = f"Expected dict item for model parsing, got {type(item)}"
-                print(errmsg)
+                logger.error(f"load_from_jsonl: {errmsg}")
                 return False, None
             # Pydantic v2
             models.append(model_type.model_validate(item))  # type: ignore[attr-defined]
