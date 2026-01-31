@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.env
+serviceAccountKey.json
+newsreader.wpr
+newsreader.wpu
+*.log
+*.zip
+
+# Virtual environment files
+Include/
+Lib/
+Scripts/
+temp/
+pyvenv.cfg
+
+# Playwright browser binaries (not needed in GitHub)
+.playwright/
+node_modules/
+playwright-report/
+test-results/
+
+# IDE and system files
+.DS_Store
+.idea/
+*.swp
+*.swo
+*.wpu
+*.wpr
+
+# Database files
+*.sqlite3
+*.db
+serviceAccountKey.json
