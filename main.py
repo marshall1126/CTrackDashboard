@@ -1,11 +1,18 @@
 import sys
 
-
 from logger import get_logger
 logger = get_logger(__name__)
 from analysis_scripts.analysis import Analysis
 
+from enviro import EnvKey, load_env
+
 def main() -> None:
+    # Load environment variables
+    try:
+        load_env()
+    except Exception as e:
+        logger.error("Could not load environement variables")
+        return
     analysis = Analysis()
     analysis.run_analysis()
 

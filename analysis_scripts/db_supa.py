@@ -7,9 +7,6 @@
 
 #import sys
 import asyncio
-from dotenv import load_dotenv
-import json
-import os
 from pathlib import Path
 import sys
 from supabase import create_client, Client
@@ -28,24 +25,26 @@ logger = get_logger(__name__)
 # LOCAL IMPORTS
 from analysis_scripts import constants
 from analysis_scripts.jsonfileio import read_from_jsonl
+from enviro import EnvKey, get as get_env_value
 
 # Constants
 MAX_ROWS = 100
 
-try:
-    PROJECT_ROOT = Path(__file__).resolve().parents[1] # CWD is CtrackAnalyze per your output
-    ENV_PATH = PROJECT_ROOT / ".env"
+#try:
+    #PROJECT_ROOT = Path(__file__).resolve().parents[1] # CWD is CtrackAnalyze per your output
+    #ENV_PATH = PROJECT_ROOT / ".env"
     
-    loaded = load_dotenv(dotenv_path=ENV_PATH, override=False)
+    #loaded = load_dotenv(dotenv_path=ENV_PATH, override=False)
     
-    #print(f"load_dotenv loaded={loaded} path={ENV_PATH} exists={ENV_PATH.exists()}")
-    #print("CWD:", os.getcwd())
-    #print("SUPABASE_SERVICE_ROLE_KEY present:", bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")))
-except:
-    pass 
+    ##print(f"load_dotenv loaded={loaded} path={ENV_PATH} exists={ENV_PATH.exists()}")
+    ##print("CWD:", os.getcwd())
+    ##print("SUPABASE_SERVICE_ROLE_KEY present:", bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY")))
+#except:
+    #logger.error("Could not load environment variables")
+    #raise
 
 # Your Supabase credentials
-url = "https://ygarfocydkkpoejbngkz.supabase.co"
+# url = "https://ygarfocydkkpoejbngkz.supabase.co"
 #print(f"URL: {url}")
 #print(f"Key found: {key is not None}")
 #print(f"Key length: {len(key) if key else 0}")
@@ -56,33 +55,44 @@ _supabase: Client | None = None
 _SUPA_SEM: asyncio.Semaphore | None = None
 _SUPA_LOCK = threading.Lock()
 
-#############################################################################################
-# INIT_SUPA_CONCURRENCY
-#############################################################################################
-def init_supa_concurrency(max_concurrency: int = 8) -> None:
-    global _SUPA_SEM
-    if _SUPA_SEM is None:
-        _SUPA_SEM = asyncio.Semaphore(max_concurrency)
-        logger.info("Initialized Supabase concurrency gate (max=%s)", max_concurrency)
 
-#############################################################################################
-# _SUPA_CALL
-#############################################################################################        
-async def _supa_call(fn, *args, **kwargs):
-    """
-    Run a blocking Supabase call in a thread, with concurrency limiting.
-    """
-    init_supa_concurrency(8)
-    assert _SUPA_SEM is not None
+##############################################################################################
+## INIT_SUPA_CONCURRENCY
+## COMMENTED OUT FOR FUTURE USE
+##############################################################################################
+#def init_supa_concurrency(max_concurrency: int = 8) -> None:
+    #global _SUPA_SEM
+    #if _SUPA_SEM is None:
+        #_SUPA_SEM = asyncio.Semaphore(max_concurrency)
+        #logger.info("Initialized Supabase concurrency gate (max=%s)", max_concurrency)
 
-    async with _SUPA_SEM:
-        return await asyncio.to_thread(fn, *args, **kwargs)
+##############################################################################################
+## _SUPA_CALL
+## COMMENTED OUT FOR FUTURE USE
+##############################################################################################        
+#async def _supa_call(fn, *args, **kwargs):
+    #"""
+    #Run a blocking Supabase call in a thread, with concurrency limiting.
+    #"""
+    #init_supa_concurrency(8)
+    #assert _SUPA_SEM is not None
+
+    #async with _SUPA_SEM:
+        #return await asyncio.to_thread(fn, *args, **kwargs)
 
 #############################################################################################
 # GET_SUPABASE
 # Returns supa client
 #############################################################################################        
 def get_supabase() -> Client | None:
+    """
+        Returns a shared Supabase client.
+        
+        - On success: Returns the Client instance.
+        - On failure (missing env vars, creation error): Logs details and returns None.
+        - Callers must check for None before use.
+    """
+    
     global _supabase
     try:
         if _supabase is not None:
@@ -92,11 +102,13 @@ def get_supabase() -> Client | None:
             if _supabase is not None:
                 return _supabase
 
-            key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            # key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            key = get_env_value(EnvKey.SUPABASE_SERVICE_ROLE_KEY)
             if not key:
                 raise ValueError("SUPABASE_SERVICE_ROLE_KEY environment variable is not set or is empty")
 
             logger.info("Creating Supabase client")
+            url = get_env_value(EnvKey.SUPABASE_URL)
             _supabase = create_client(url, key)
             logger.info("Supabase client created")
             return _supabase
@@ -107,6 +119,7 @@ def get_supabase() -> Client | None:
 
 ###############################################################################################
 # SUPA_DELETE_ONE_RECORD
+# must be called from sync code
 # Delete all records in the specified table
 ###############################################################################################    
 def supa_delete_one_record(
@@ -180,6 +193,10 @@ def supa_delete_all_records(table_name) -> Tuple[bool, int]:
     """
     try:
         supabase = get_supabase()
+        if not supabase:
+            logger.error("supa_delete_all_records: No Supabase client")
+            return False, -1        
+        
         # Delete all records from the table
         results = supabase.rpc('delete_all_and_reset_id', {
             'table_name': table_name
@@ -260,9 +277,12 @@ def supa_read_records(
     """
     try:
         supabase = get_supabase()
+        if not supabase:
+            logger.error("supa_read_records: Supabase client is None")
+            return False, 0
         
         effective_limit = limit or MAX_ROWS
-        logger.info(f"Reading up to {effective_limit} rows from {table_name}...")
+        logger.info(f"supa_read_records: Reading up to {effective_limit} rows from {table_name}...")
 
         query = supabase.table(table_name).select("*")
 
@@ -285,24 +305,24 @@ def supa_read_records(
 ##############################################################################
 # SUPA_SELECT
 ##############################################################################
-def supa_select(table_name, fields, where_conditions=None):
-    try:
-        supabase = get_supabase()
+#def supa_select(table_name, fields, where_conditions=None):
+    #try:
+        #supabase = get_supabase()
         
-        query = supabase.table(table_name).select(fields)
+        #query = supabase.table(table_name).select(fields)
 
-        # Add where conditions if provided
-        if where_conditions:
-            for column, value in where_conditions.items():
-                query = query.eq(column, value)
+        ## Add where conditions if provided
+        #if where_conditions:
+            #for column, value in where_conditions.items():
+                #query = query.eq(column, value)
 
-        response = query.execute()
-        # print(response.data)
-        return response.data
+        #response = query.execute()
+        ## print(response.data)
+        #return True, response.data
 
-    except Exception as e:
-        logger.error(f"Error during select from {table_name}: {e}")
-        raise e
+    #except Exception as e:
+        #logger.error(f"Error during select from {table_name}: {e}")
+        #raise e
     
 ##############################################################################
 # SUPA_SELECT_COUNT
@@ -330,7 +350,7 @@ def supa_select_count(table_name: str, where_conditions=None) -> Tuple[bool, int
         supabase = get_supabase()
         
         # Use count="exact" to get the total count
-        query = supabase.table(table_name).select("*", count="exact")
+        query = supabase.table(table_name).select("count", count="exact")
         
         # Add where conditions if provided
         if where_conditions:
@@ -354,5 +374,7 @@ if __name__ == "__main__":
     output_file = 'testdata/'+ table_name +'.jsonl'
     # status, record_count = export_table_to_jsonl(table_name=table_name, output_file=output_file)
 
-    supa_delete_all_records(table_name)
-    status, row_count = read_from_jsonl(table_name, input_file=output_file)
+    #supa_delete_all_records(table_name)
+    #status, row_count = read_from_jsonl(table_name, input_file=output_file)
+    ok, count = supa_select_count(table_name=table_name)
+    print("TESTS DONE")

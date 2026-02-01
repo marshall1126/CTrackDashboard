@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
-from psycopg2.extras import Json
+# from psycopg2.extras import Json
+from psycopg.types.json import Jsonb
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 import sys
@@ -17,7 +18,7 @@ logger = get_logger(__name__)
 
 # LOCAL IMPORTS
 from analysis_scripts import constants
-from analysis_scripts.db_neon import neon_select,  neon_insert_record
+from analysis_scripts.db_neon_pooler import neon_select,  neon_insert_record
 from analysis_scripts.jsonfileio import read_from_jsonl
 
 T = TypeVar("T", bound=BaseModel)
@@ -170,30 +171,29 @@ def insert_policy(policy: Policies) -> bool:
         
         insert_data = {
             "time": policy.time,
+            "chinese_original": policy.chinese_original,
             "continent_tags": policy.continent_tags,
             "country_tags": policy.country_tags,
             "country_region_tags": policy.country_region_tags,
             "description": policy.description,
             "department_id": policy.department_id,
+            "english_translation": policy.english_translation,
             "industry_icb_tags": policy.industry_icb_tags,
             "importance_score": policy.importance_score,
-            # "key_points": Json(key_points_json),                # jsonb
-            "impact_analysis": Json(impact_analysis_json),      # jsonb
+            # "key_points": Jsonb(key_points_json),                # jsonb
+            "impact_analysis": Jsonb(impact_analysis_json),      # jsonb
             "province_tags": policy.province_tags,
             "region_tags": policy.region_tags,
             "source_url": policy.source_url,
-            "tags": Json(policy.tags),                            # jsonb
+            "tags": Jsonb(policy.tags or {}),
             # "title_cn": policy.title_cn,
             "title": policy.title,
-            "tags": Json(policy.tags or {}),
-            "chinese_original": policy.chinese_original,
-            "english_translation": policy.english_translation,
             "anlys_date": policy.anlys_date,
             "status": policy.status,
         }        
         
         tbl_name = constants.TableNames.TBL_POLICIES
-        ok = neon_insert_record(tbl_name, insert_data, commit=True)
+        ok = neon_insert_record(table_name=tbl_name, data=insert_data)
         
         if not ok:
             logger.error("insert_policy FAILED.")
@@ -222,7 +222,7 @@ def insert_policy_error(policy_errors: PoliciesErrors) -> bool:
         insert_data = policy_errors.model_dump(exclude={"id"}, exclude_none=True)  
         
         tbl_name = constants.TableNames.TBL_POLICIES_ERRORS
-        ok = neon_insert_record(tbl_name, insert_data, commit=True)
+        ok = neon_insert_record(tbl_name=tbl_name, data=insert_data)
         
         if not ok:
             logger.error("insert_policy_error: FAILED.")

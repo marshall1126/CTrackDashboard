@@ -33,7 +33,7 @@ def get_user_message(text_en, tag_data):
       TASK:\n
       - Use POLICY_TEXT + TAG_DATA.\n
       - Produce:\n
-      1. {RESPONSE_KEY_POINTS} (1–3)\n"
+      1. {RESPONSE_KEY_POINTS} (at least 1 key point)\n"
       2. {RESPONSE_IMPACT_ANALYSIS} (ONE entry per tag in TAG_DATA)\n"
       3. {RESPONSE_COMPREHENSIVE} ({COMPREHENSIVE_WORD_COUNT_MIN}-{COMPREHENSIVE_WORD_COUNT_MAX} words)\n
       4. {RESPONSE_TITLE}
@@ -60,8 +60,12 @@ async def ai_analysis_phase5(ai_master: AIMaster,
     try:
         # GET PROMPT
         tag_data = policy_analysis_data.industry_icb_tags
-        user_message = get_user_message(policy_analysis_data.english_translation, tag_data)
+        user_message = get_user_message(text_en=policy_analysis_data.english_translation, tag_data=tag_data)
+        #with open('user_message.txt', 'w', encoding='utf-8') as f:
+        #    f.write(user_message)
         system_message = get_system_message()
+        #with open('system_message.txt', 'w', encoding='utf-8') as f:
+        #    f.write(system_message)        
         response_format = get_response_format()
         # SUBMIT ANALYSIS
          # Build proper OpenAI-style messages list
@@ -146,9 +150,10 @@ def get_system_message():
       -----------------------------
       KEY POINTS RULES
       -----------------------------
-      - Return 1–3 key points.
+      - Return 1–3 key points from the story text
+      - Stories longer than 250 words must have at least 2 key points
+      - Stories longer than 500 words must have 3 key points
       - Format each as: {{"kp_label": "<short>", "content": "<150–250 chars>"}}
-      - Each key point MUST reference at least one tag from TAG_DATA.
       - Must be factual, concise, compelling, and interesting to an expert political or expert economic analyst.
       
       -----------------------------

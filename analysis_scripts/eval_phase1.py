@@ -96,7 +96,10 @@ async def ai_analysis_phase1(ai_master: AIMaster,
             set_regions_codes.add(region_code)
             
         for idx, country_mentioned in enumerate(countries_mentioned, 1):
-            ref_country_item = ref_data.countries[country_mentioned]
+            ref_country_item = ref_data.countries.get(country_mentioned)
+            if not ref_country_item:
+                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {country_mentioned} not found in country list")
+                continue
             country_code = ref_country_item.get('country_code')
             country_region_code = ref_country_item.get('country_region_code')
             continent_code = ref_country_item.get('continent_code')
@@ -105,14 +108,20 @@ async def ai_analysis_phase1(ai_master: AIMaster,
             set_continents_codes.add(continent_code)
             
         for idx, country_region_mentioned in enumerate(country_regions_mentioned, 1):
-            ref_country_region_item = ref_data.country_regions[country_region_mentioned]
+            ref_country_region_item = ref_data.country_regions.get(country_region_mentioned)
+            if not ref_country_region_item:
+                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {country_region_mentioned} not found in country region list")
+                continue
             country_region_code = ref_country_region_item.get('country_region_code')
             continent_code = ref_country_region_item.get('continent_code')
             set_country_regions_codes.add(country_region_code)
             set_continents_codes.add(continent_code)
             
         for idx, continent_mentioned in enumerate(continents_mentioned, 1):
-            ref_continent_item = ref_data.continents[continent_mentioned]
+            ref_continent_item = ref_data.continents.get(continent_mentioned)
+            if not ref_continent_item:
+                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {ref_continent_item} not found in continent list")
+                continue            
             continent_code = ref_continent_item.get('continent_code')
             set_continents_codes.add(continent_code)                
 
@@ -209,7 +218,7 @@ with maximum accuracy and consistency. Output ONE JSON object using the structur
         MANDATORY SPECIAL RULES
         --------------------------------------------------------------------
         • China is excluded from countries_mentioned (ignore it completely).  
-        • Taiwan MUST ALWAYS be placed under provinces_mentioned.  
+        • if Taiwan is explicitly referenced (including as 'Taiwanese'), ALWAYS place it under provinces_mentioned
         • If “Taiwanese” appears, treat it as “Taiwan”.  
         • If a country abbreviation maps to an allowed country, include the canonical name.  
         • If a demonym refers to an allowed country, include the canonical name.  

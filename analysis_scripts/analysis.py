@@ -27,7 +27,7 @@ from analysis_scripts import constants
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
 from analysis_scripts.constants import TableNames
-from analysis_scripts.db_neon import get_db_connection, neon_select, neon_delete, neon_insert_record,  configure_db_pool_for_concurrency
+from analysis_scripts.db_neon_pooler import get_db_connection, neon_select, neon_delete, neon_insert_record
 from analysis_scripts.db_neon_wrapper import Policies,  PoliciesErrors
 from analysis_scripts.db_supa import supa_delete_one_record,  supa_select_count
 from analysis_scripts.db_supa_wrapper import read_all_final_stories,  StoryAllFinal
@@ -71,12 +71,11 @@ def insert_policy_error(policy_analysis_data: PolicyAnalysisData) -> bool:
         policy_error.status = 0
         
         # SAVE TO OUTPUT FILE
-        write_to_jsonl(policy_error,  filename_prefix='policy_error')
+        # write_to_jsonl(policy_error,  filename_prefix='policy_error')
         # SAVE RECORD
         ok = neon_insert_record(
             table_name=constants.TableNames.TBL_POLICIES_ERRORS,
-            data=policy_error,
-            commit=True
+            data=policy_error
         )        
         return ok
     except Exception as e:
@@ -112,7 +111,7 @@ class Analysis:
         
         try:
             # read the final stories table
-            status, supa_stories = read_all_final_stories(limit=99)
+            status, supa_stories = read_all_final_stories(limit=5)
             if not status:
                 logger.info (f"preprocess: Error {constants.TableNames.TBL_STORIES_ALL_FINAL}")
                 return False, []
@@ -218,7 +217,7 @@ class Analysis:
                 return False
     
             # IF ok is True, save to POLICIES table
-            write_to_jsonl(record=policy_analysis_data, filename_prefix='policy_analyssis_data')
+            # write_to_jsonl(record=policy_analysis_data, filename_prefix='policy_analyssis_data')
             ok = self.insert_policy(policy_analysis_data)
             if not ok:
                 policy_analysis_data.success = False
@@ -332,17 +331,14 @@ class Analysis:
                 "analysis": policy_analysis_data.comprehensive_analysis,
             }
             
-            # TAGS
+            # TOPICS TAGS
             policy.tags = {}
-            if key_points:
-                policy.tags["topics"] = [
-                    kp.kp_label if hasattr(kp, "kp_label") else kp.get("kp_label")
-                    for kp in key_points
-                ]
+            if policy_analysis_data.topics_tags:
+                policy.tags["topics"] = policy_analysis_data.topics_tags
             policy.status = 1
             
             # SAVE TO OUTPUT FILE
-            write_to_jsonl(policy,  filename_prefix='policy_new')
+            # write_to_jsonl(policy,  filename_prefix='policy_new')
             # SAVE RECORD
             policy.status = 1
             ok = neon_insert_record(
@@ -368,7 +364,7 @@ class Analysis:
                 logger.error("Could not get reference data")
                 return False
             
-            configure_db_pool_for_concurrency(max_concurrency=max_concurrency)
+            # configure_db_pool_for_concurrency(max_concurrency=max_concurrency)
             
             # returns a list of stories to analyze 
             ok, story_list = self.preprocess()
@@ -421,10 +417,13 @@ class Analysis:
 
             # Run all evaluations with bounded concurrency
             overall_ok = asyncio.run(_run_all())
+            
             return overall_ok
         except Exception as e:
             logger.error(f"Error encountered. {e}")
             return False
+        finally:
+            logger.info("*** ANALYSIS DONE")
         
 def test1():
     analysis = Analysis()

@@ -9,8 +9,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # LOGGER    
-import logging
-logger = logging.getLogger(__name__)
+from logger import get_logger
+logger = get_logger(__name__)
 
 ##################################################################################
 # READ_FROM_JSONL

@@ -99,6 +99,8 @@ def read_all_final_stories(limit: Optional[int] = None) -> tuple[bool, list[Stor
         table_name = constants.TableNames.TBL_STORIES_ALL_FINAL
         result, records = supa_read_records(table_name=table_name, limit=limit)
         if not result:
+            return False, []
+        if not records:
             return True, []
         stories: list[StoryAllFinal] = []
         for r in records:

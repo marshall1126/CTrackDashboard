@@ -7,8 +7,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # LOGGER    
-import logging
-logger = logging.getLogger(__name__)
+from logger import get_logger
+logger = get_logger(__name__)
 
 from analysis_scripts.db import load_from_jsonl
 from analysis_scripts.db_neon_wrapper import read_all

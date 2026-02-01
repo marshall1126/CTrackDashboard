@@ -16,8 +16,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from analysis_scripts.jsonfileio import read_from_jsonl
 
 # LOGGER    
-import logging
-logger = logging.getLogger(__name__)
+from logger import get_logger
+logger = get_logger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 

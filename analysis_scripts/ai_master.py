@@ -1,38 +1,24 @@
 import asyncio
-import os
-from pathlib import Path
 import sys
 from typing import Optional
-from dotenv import load_dotenv
 
 from openai import AsyncOpenAI, APIError, RateLimitError, APIStatusError
 
 from logger import get_logger
 logger = get_logger(__name__)
 
-# Dot environment
-try:
-  PROJECT_ROOT = Path(__file__).resolve().parents[1] # CWD is CtrackAnalyze per your output
-  ENV_PATH = PROJECT_ROOT / ".env"
-
-  loaded = load_dotenv(dotenv_path=ENV_PATH, override=False)
-
-  #print(f"load_dotenv loaded={loaded} path={ENV_PATH} exists={ENV_PATH.exists()}")
-  #print("CWD:", os.getcwd())
-  #print("DATABASE_URL present:", bool(os.getenv("DATABASE_URL")))
-except:
-  pass 
-
+# PROJECT IMPORTS
 from analysis_scripts.ai_model_params import AIModelParams
+from enviro import EnvKey, get as get_env_value
 
 TRANSLATION_CHUNK_SIZE = 15000
 
 class AIMaster:
-
   def __init__(self):
     try:
       # --- OpenAI Setup ---
-      key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY_1")
+      # key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY_1")
+      key = get_env_value(EnvKey.OPENAI_API_KEY)
       if not key:
         logger.critical("OPENAI_API_KEY environment variable not set")
         sys.exit("OPENAI_API_KEY not set")
