@@ -11,7 +11,7 @@ def main() -> None:
     try:
         load_env()
     except Exception as e:
-        logger.error("Could not load environement variables")
+        logger.error("Could not load environement variables. {e}")
         return
     analysis = Analysis()
     analysis.run_analysis()
