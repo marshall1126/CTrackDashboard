@@ -14,7 +14,7 @@ from analysis_scripts.db import load_from_jsonl
 from analysis_scripts.db_neon_wrapper import read_all
 from analysis_scripts import constants
 from analysis_scripts.db_neon_wrapper import Policies
-from analysis_scripts.db_neon import neon_delete, neon_reset_identity
+from analysis_scripts.db_neon_pooler import neon_delete, neon_reset_identity
 from analysis_scripts.db_supa import supa_delete_all_records
 from analysis_scripts.db_supa_wrapper import StoryAllFinal, supa_insert_to_db
 from analysis_scripts.jsonfileio import write_to_jsonl, read_from_jsonl
