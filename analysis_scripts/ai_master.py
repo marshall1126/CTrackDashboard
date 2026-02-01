@@ -17,7 +17,7 @@ class AIMaster:
   def __init__(self):
     try:
       # --- OpenAI Setup ---
-      # key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY_1")
+      # key = os.getenv("OPENAI_API_KEY")
       key = get_env_value(EnvKey.OPENAI_API_KEY)
       if not key:
         logger.critical("OPENAI_API_KEY environment variable not set")
