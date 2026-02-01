@@ -21,7 +21,6 @@ class EnvKey(str, Enum):
 _keydict: dict[EnvKey, str] = {}
 _loaded = False
 
-
 def _project_root() -> Path:
     # env.py lives in analysis_scripts/, so parent is project root
     return Path(__file__).resolve().parent
@@ -37,11 +36,14 @@ def load_env(*, override_dotenv: bool = False) -> None:
     if _loaded:
         return
 
-    env_path = _project_root() / ".env"
-    loaded = load_dotenv(dotenv_path=env_path, override=override_dotenv)
+    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_GIT_COMMIT_SHA"):
+        logger.info("Running on Railway – using platform env vars")
+    else:
+        env_path = _project_root() / ".env"
+        loaded = load_dotenv(dotenv_path=env_path, override=override_dotenv)
 
-    # This log is safe (no secret values)
-    logger.info("dotenv loaded=%s path=%s exists=%s", loaded, env_path, env_path.exists())
+        # This log is safe (no secret values)
+        logger.info("dotenv loaded=%s path=%s exists=%s", loaded, env_path, env_path.exists())
 
     missing: list[str] = []
     for k in EnvKey:
