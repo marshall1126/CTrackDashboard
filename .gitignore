@@ -27,3 +27,6 @@ env/
 # Database files
 *.sqlite3
 *.db
+
+analysis_scripts/system_message.txt
+analysis_scripts/user_message.txt
