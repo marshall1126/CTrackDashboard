@@ -50,13 +50,6 @@ def get_db_connection():
     finally:
         conn.close()  # ← release immediately so PgBouncer can reuse
 
-def close_pool() -> None:
-    global _POOL
-    if _POOL is not None:
-        _POOL.closeall()
-        _POOL = None
-        logger.info("Closed Neon DB pool")
-    
 ########################################################################
 # NEON_DELETE
 # Returns Tuple[bool, int]
@@ -88,8 +81,7 @@ def neon_delete(
                 # rowcount is available immediately after execute for DML
                 deleted = cur.rowcount                
 
-            conn.commit()
-            return True, deleted
+        return True, deleted
 
     except Exception as e:
         logger.exception("neon_delete failed", extra={"table": table_name, "err": e})
@@ -152,37 +144,26 @@ def neon_insert_record(
 
     try:
         with get_db_connection() as conn:
-            try:
-                stmt = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
-                    sql.Identifier(table_name),
-                    sql.SQL(", ").join(sql.Identifier(c) for c in columns),
-                    sql.SQL(", ").join(sql.Placeholder() for _ in columns),
-                )
+            stmt = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+                sql.Identifier(table_name),
+                sql.SQL(", ").join(sql.Identifier(c) for c in columns),
+                sql.SQL(", ").join(sql.Placeholder() for _ in columns),
+            )
 
-                for k, v in row.items():
-                    if isinstance(v, dict):
-                        logger.error("RAW dict still present at key=%s", k)
-                    if isinstance(v, list) and any(isinstance(x, dict) for x in v):
-                        logger.error("LIST contains dicts at key=%s", k)
+            for k, v in row.items():
+                if isinstance(v, dict):
+                    logger.error("RAW dict still present at key=%s", k)
+                if isinstance(v, list) and any(isinstance(x, dict) for x in v):
+                    logger.error("LIST contains dicts at key=%s", k)
 
-                with conn.cursor() as cur:
-                    cur.execute(stmt, values)
+            with conn.cursor() as cur:
+                cur.execute(stmt, values)
 
-                conn.commit()
-
-                logger.info("neon_insert_record: Inserted 1 row into %s", table_name)
-                return True
-
-            except Exception:
-                # Critical for pooled connections: reset transaction state
-                try:
-                    conn.rollback()   # always rollback on error for pooled conns
-                except Exception:
-                    pass
-                raise
+        logger.info("neon_insert_record: Inserted 1 row into %s", table_name)
+        return True
 
     except Exception as e:
-        errmsg = f"neon_insert_record: error encountered (table=%s) {table_name}. {e}"
+        errmsg = f"neon_insert_record failed (table={table_name}): {e}"
         logger.exception(errmsg)
         return False
 

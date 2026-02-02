@@ -15,6 +15,7 @@ def main() -> None:
         return
     analysis = Analysis()
     analysis.run_analysis()
-
+    logger.info("main: DONE")
+    
 if __name__ == "__main__":
     main()

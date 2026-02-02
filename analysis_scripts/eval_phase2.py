@@ -72,13 +72,11 @@ async def ai_analysis_phase2(ai_master: AIMaster,
         policy_analysis_data.english_title = json_result.get('english_title', '')
         policy_analysis_data.importance_score = json_result.get('importance_score', 5)
         policy_analysis_data.description = json_result.get('summary', '')
-        
-        
-        logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: english_title: {policy_analysis_data.english_title}"[:100])
-        logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: importance_score: {policy_analysis_data.importance_score}")
-        logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: description: {policy_analysis_data.description}"[:100])
-        
-        
+                
+        l#ogger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: english_title: {policy_analysis_data.english_title}"[:100])
+        #logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: importance_score: {policy_analysis_data.importance_score}")
+        #logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: description: {policy_analysis_data.description}"[:100])
+                
         policy_analysis_data.success = True
     except Exception as e:
         errmsg = f"ai_analysis_phase2: id={policy_analysis_data.id}: Error encountered. {e}"
