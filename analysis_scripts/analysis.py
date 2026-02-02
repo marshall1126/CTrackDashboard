@@ -111,7 +111,7 @@ class Analysis:
         
         try:
             # read the final stories table
-            status, supa_stories = read_all_final_stories(limit=5)
+            status, supa_stories = read_all_final_stories(limit=1)
             if not status:
                 logger.info (f"preprocess: Error {constants.TableNames.TBL_STORIES_ALL_FINAL}")
                 return False, []
