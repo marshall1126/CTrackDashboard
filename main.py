@@ -1,4 +1,6 @@
+import asyncio
 import sys
+import threading
 
 from logger import get_logger
 logger = get_logger(__name__)
@@ -15,6 +17,16 @@ def main() -> None:
         return
     analysis = Analysis()
     analysis.run_analysis()
+    
+    logger.info("Threads alive at exit: %s",
+                [t.name for t in threading.enumerate()])
+    
+    try:
+        loop = asyncio.get_running_loop()
+        logger.info("Event loop still running: %s", loop)
+    except RuntimeError:
+        logger.info("No running asyncio loop")
+        
     logger.info("main: DONE")
     
 if __name__ == "__main__":

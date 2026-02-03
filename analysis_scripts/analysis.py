@@ -111,7 +111,7 @@ class Analysis:
         
         try:
             # read the final stories table
-            status, supa_stories = read_all_final_stories(limit=1)
+            status, supa_stories = read_all_final_stories(limit=10)
             if not status:
                 logger.info (f"preprocess: Error {constants.TableNames.TBL_STORIES_ALL_FINAL}")
                 return False, []
@@ -310,7 +310,7 @@ class Analysis:
                 for impact in (policy_analysis_data.impact_analysis or [])
             ]
             policy.importance_score = policy_analysis_data.importance_score
-            policy.industry_icb_tags = policy_analysis_data.industry_icb_tags
+            policy.industry_ICB_tags = policy_analysis_data.industry_ICB_tags
             policy.province_tags = policy_analysis_data.province_tags
             policy.region_tags = policy_analysis_data.region_tags
             policy.source_url = policy_analysis_data.source_url
@@ -396,7 +396,10 @@ class Analysis:
                 async def _run_one(policy: PolicyAnalysisData) -> bool:
                     async with sem:
                         try:
-                            return await self.evaluate(policy)
+                            ok = await self.evaluate(policy)
+                            if not ok:
+                                ok = await self.evaluate(policy)
+                            return ok
                         except Exception:
                             logger.exception(f"run_analysis: evaluate crashed id={policy.id}")
                             return False
@@ -441,7 +444,7 @@ async def test2():
         
         analysis = Analysis()
         
-        table_name = constants.TableNames.TBL_POLICIES_READONLY
+        table_name = constants.TableNames.TBL_POLICIES
         where_clause = 'id= 19492'
         ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
         if not ok or not record:
@@ -483,7 +486,7 @@ async def test3():
         analysis = Analysis()
         
         policy_analysis_data = PolicyAnalysisData()
-        table_name = constants.TableNames.TBL_POLICIES_READONLY
+        table_name = constants.TableNames.TBL_POLICIES
         where_clause = 'id= 19492'
         ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
         if not ok or not record:

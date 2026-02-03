@@ -69,15 +69,16 @@ class Translator:
         
         
     def user_message_following(self, text, translated_text):
+        anchor = (translated_text or "")[-1200:]  # tweak 800–1500 as needed
+        
         user_message = f"""
            You are continuing translation of the same official Chinese document.
-
-           Previous translated segment (use the same style, tone and terminology):
+           Maintain the same tone and terminology.
            
-           {translated_text}
+           Consistency anchor (tail of previous translation):
+           {anchor}
            
            Next segment to translate:
-           
            {text}
            
            Rules you **must** strictly follow:
@@ -176,8 +177,9 @@ class Translator:
                     ]                
                 result = await self.ai_master.execute(messages=messages, model_params=self.ai_model_params)
                 if result is None or not result.strip():
-                    logger.warning(f"Story {story_id}: Received empty or None response from model")
-                    return False, None
+                    errmsg = f"Story {story_id}: Received empty or None response from model"
+                    logger.warning(errmsg)
+                    return False, None, errmsg
             
                 translated = result.strip()
                       

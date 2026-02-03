@@ -72,8 +72,8 @@ async def ai_analysis_phase4(ai_master: AIMaster,
         
         
         json_result = json.loads(result)        
-        policy_analysis_data.industry_icb_tags = json_result.get('industry_ICB_names')
-        logger.info(f"ai_analysis_phase4: id={policy_analysis_data.id}: industry_icb_tags: {policy_analysis_data.industry_icb_tags}")
+        policy_analysis_data.industry_ICB_tags = json_result.get('industry_ICB_names')
+        logger.info(f"ai_analysis_phase4: id={policy_analysis_data.id}: industry_icb_tags: {policy_analysis_data.industry_ICB_tags}")
         
         policy_analysis_data.success = True
     except Exception as e:
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     from analysis_scripts import constants
     from analysis_scripts.db_neon_wrapper import Policies
     
-    table_name = constants.TableNames.TBL_POLICIES_READONLY
+    table_name = constants.TableNames.TBL_POLICIES
     where_clause = 'id= 19492'
     ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
     if not ok or not record:

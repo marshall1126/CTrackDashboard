@@ -55,7 +55,7 @@ class Policies2(BaseModel):
     country_tags: list[str]= Field(default_factory=list)
     country_regions_tags: list[str]= Field(default_factory=list)
     dept_en: str = ""
-    industry_icb_tags: list[str]= Field(default_factory=list)
+    industry_ICB_tags: list[str]= Field(default_factory=list)
     importance_score: int = 5
     key_points: list[KeyPoint] = Field(default_factory=list)
     impact_analysis: list[PolicyImpact] = Field(default_factory=list)
@@ -102,7 +102,7 @@ class Policies(BaseModel):
     country_tags: List[str] = Field(default_factory=list)
     country_region_tags: List[str] = Field(default_factory=list)
     continent_tags: List[str] = Field(default_factory=list)
-    industry_icb_tags: List[str] = Field(default_factory=list)
+    industry_ICB_tags: List[str] = Field(default_factory=list)
     
     anlys_date: Optional[datetime] = None
     impact_analysis: List[Dict[str, Any]] = Field(default_factory=list)
@@ -178,7 +178,7 @@ def insert_policy(policy: Policies) -> bool:
             "description": policy.description,
             "department_id": policy.department_id,
             "english_translation": policy.english_translation,
-            "industry_icb_tags": policy.industry_icb_tags,
+            "industry_ICB_tags": policy.industry_ICB_tags,
             "importance_score": policy.importance_score,
             # "key_points": Jsonb(key_points_json),                # jsonb
             "impact_analysis": Jsonb(impact_analysis_json),      # jsonb

@@ -20,7 +20,7 @@ from analysis_scripts.db_supa_wrapper import StoryAllFinal, supa_insert_to_db
 from analysis_scripts.jsonfileio import write_to_jsonl, read_from_jsonl
 
 def read_policy():
-    table_name = constants.TableNames.TBL_POLICIES_READONLY
+    table_name = constants.TableNames.TBL_POLICIES
     where_clause = 'id= 19492'
     ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
     if not ok:

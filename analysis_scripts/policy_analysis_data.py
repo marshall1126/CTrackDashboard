@@ -35,7 +35,7 @@ class PolicyAnalysisData(BaseModel):
     description: str = ''
     english_title: str = ''
     english_translation: str = ""
-    industry_icb_tags: list[str]= Field(default_factory=list)
+    industry_ICB_tags: list[str]= Field(default_factory=list)
     importance_score: int = 5
     key_points: list[KeyPoint] = Field(default_factory=list)
     impact_analysis: list[PolicyImpact] = Field(default_factory=list)

@@ -59,7 +59,7 @@ async def ai_analysis_phase5(ai_master: AIMaster,
         return False
     try:
         # GET PROMPT
-        tag_data = policy_analysis_data.industry_icb_tags
+        tag_data = policy_analysis_data.industry_ICB_tags
         user_message = get_user_message(text_en=policy_analysis_data.english_translation, tag_data=tag_data)
         #with open('user_message.txt', 'w', encoding='utf-8') as f:
         #    f.write(user_message)
@@ -295,14 +295,14 @@ if __name__ == "__main__":
     from analysis_scripts.db_neon_wrapper import read_all
     from analysis_scripts import constants
     
-    table_name = constants.TableNames.TBL_POLICIES_READONLY
+    table_name = constants.TableNames.TBL_POLICIES
     where_clause = 'id= 19492'
     ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
     if not ok or not record:
         logger.error("could not find record")
     record0 = record[0]
     text = record0.english_translation
-    industry_icb_tags = record0.industry_icb_tags
+    industry_icb_tags = record0.industry_ICB_tags
     
     # INITIALILZE REFERENCE DATA
     #ref_data_obj = RefData()
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     policy = PolicyAnalysisData()
     policy.id = 1234
     policy.english_translation = text
-    policy.industry_icb_tags = industry_icb_tags
+    policy.industry_ICB_tags = industry_icb_tags
     
     ai_master =  AIMaster()
     ai_model_params = AIModelParams()

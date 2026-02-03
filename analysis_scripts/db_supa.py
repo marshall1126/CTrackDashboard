@@ -191,6 +191,9 @@ def supa_delete_all_records(table_name) -> Tuple[bool, int]:
     Args:
         table_name (str): Name of the table to clear
     """
+    if not get_env_value("ALLOWED_DELETE"):
+        return False, -1
+    
     try:
         supabase = get_supabase()
         if not supabase:
