@@ -65,40 +65,34 @@ def write_to_jsonl(
 ) -> bool:
     """
     Write record(s) to a JSONL file (one JSON object per line).
-
     Args:
         record: Pydantic model OR list of Pydantic models
         output_dir: target directory
         filename_prefix: output filename prefix (without extension)
-
     Returns:
         True on success, False on failure
     """
     try:
-        # Normalize to list
         records = record if isinstance(record, list) else [record]
         if not records:
             return False
-
-        # Ensure output directory exists
+        
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
-
         file_path = output_path / f"{filename_prefix}.jsonl"
-
-        # Append JSONL rows
+        
         with file_path.open("a", encoding="utf-8") as f:
             for obj in records:
                 if hasattr(obj, "model_dump"):
                     data = obj.model_dump(mode="json")
                 else:
                     data = obj
-
-                f.write(json.dumps(data, ensure_ascii=False))
+                # Add default=str to handle datetime objects
+                f.write(json.dumps(data, ensure_ascii=False, default=str))
                 f.write("\n")
-
+        
         return True
-
+        
     except Exception as e:
         print(f"Failed to write JSONL: {e}")
         return False

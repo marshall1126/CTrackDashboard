@@ -11,8 +11,6 @@ logger = get_logger(__name__)
 from analysis_scripts.ai_model_params import AIModelParams
 from enviro import EnvKey, get as get_env_value
 
-TRANSLATION_CHUNK_SIZE = 15000
-
 class AIMaster:
   def __init__(self):
     try:

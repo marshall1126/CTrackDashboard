@@ -9,7 +9,6 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-
 class EnvKey(str, Enum):
     SUPABASE_ANON_KEY = "SUPABASE_ANON_KEY"
     SUPABASE_SERVICE_ROLE_KEY = "SUPABASE_SERVICE_ROLE_KEY"
@@ -24,7 +23,6 @@ _loaded = False
 def _project_root() -> Path:
     # env.py lives in analysis_scripts/, so parent is project root
     return Path(__file__).resolve().parent
-
 
 def load_env(*, override_dotenv: bool = False) -> None:
     """

@@ -20,10 +20,8 @@ from analysis_scripts.ai_model_params import AIModelParams
 CHAT_GPT_4o_MINI = "gpt-4o-mini"
 CHAT_GPT_5_MINI = "gpt-5-mini"
 MODEL_TRANSLATE = CHAT_GPT_4o_MINI
-TRANSLATION_CHUNK_SIZE = 15000
-MAX_TOKENS_TRANSLATE_CHUNK = 3500
+TRANSLATION_CHUNK_SIZE = 6000
 TOK_MAX_PROCESSABLE = 80000
-
 
 enc = tiktoken.get_encoding("cl100k_base")
 

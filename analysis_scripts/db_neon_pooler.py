@@ -285,6 +285,10 @@ def neon_reset_identity(
         )
         return False
 
+########################################################################
+# NEON_SELECT
+# Returns Tuple[bool, []]
+########################################################################
 def neon_select(
     table_name: str,
     where_clause: Optional[str | None] = None,
@@ -336,8 +340,67 @@ def neon_select(
     except Exception:
         logger.exception("neon_select failed", extra={"table": table_name})
         return False, []
-
     
+########################################################################
+# NEON_UPDATE
+# Returns Tuple[bool, int]
+########################################################################
+def neon_update(
+    table_name: str,
+    data: dict[str, Any],
+    where_clause: Optional[str] = None,
+    params: Optional[Any] = None
+) -> Tuple[bool, int]:
+    """
+    Update records in table.
+    
+    Args:
+        table_name: Table to update
+        data: Dict of {column: value} to SET
+        where_clause: WHERE condition with %s placeholders
+        params: Tuple/list of values for WHERE placeholders
+    
+    Returns:
+        (success, rows_updated)
+    """
+    # Validate WHERE argument pairing
+    if (where_clause is None) ^ (params is None):
+        errmsg = "where_clause and params must be provided together"
+        logger.error(errmsg)
+        raise ValueError(errmsg)
+    
+    if not data:
+        logger.error("data dict cannot be empty")
+        return False, 0
+    
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Build SET clause
+                set_parts = [sql.SQL("{} = %s").format(sql.Identifier(col)) for col in data.keys()]
+                set_clause = sql.SQL(", ").join(set_parts)
+                
+                # Build full statement
+                stmt = sql.SQL("UPDATE {} SET {}").format(
+                    sql.Identifier(table_name),
+                    set_clause
+                )
+                
+                # Combine SET values + WHERE params
+                query_params = list(data.values())
+                if where_clause:
+                    stmt += sql.SQL(" WHERE ") + sql.SQL(where_clause)
+                    query_params.extend(list(params) if params else [])
+                
+                cur.execute(stmt, query_params)
+                updated = cur.rowcount
+                
+        return True, updated
+        
+    except Exception as e:
+        logger.exception("neon_update failed", extra={"table": table_name, "err": e})
+        return False, -1
+
 # Run the function to create the table
 if __name__ == "__main__":
     table_name = 'test_dummy_table'
