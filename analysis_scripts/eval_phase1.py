@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
-from analysis_scripts.policy_analysis_data import PolicyAnalysisData
+from analysis_scripts.models import PolicyAnalysisData
 from analysis_scripts.reference_data import get_ref_data,  RefData, load_ref_data_once
 
 def get_user_message(text_en: str) -> str:
@@ -35,10 +35,10 @@ async def ai_analysis_phase1(ai_master: AIMaster,
     if not policy_analysis_data:
         logger.error("No policy found")
         return False
-    logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: ### PHASE 1 ANALYSIS START #####################")
+    logger.info(f"id={policy_analysis_data.id}: ### PHASE 1 ANALYSIS START #####################")
     english_translation = policy_analysis_data.english_translation
     if not english_translation:
-        policy_analysis_data.errmsg =  f"ai_analysis_phase1: id={policy_analysis_data.id}: No english_translation found"
+        policy_analysis_data.errmsg =  f"id={policy_analysis_data.id}: No english_translation found"
         logger.error(policy_analysis_data.errmsg)
         policy_analysis_data.success = False
         return False
@@ -58,7 +58,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
         result = await ai_master.execute(messages=messages, model_params=ai_model_params)
         if not result:
             logger.error(
-                    f"ai_analysis_phase1: id={policy_analysis_data.id}: No geo context")
+                    f"id={policy_analysis_data.id}: No geo context")
             return None, None, None
         
         
@@ -79,7 +79,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
             key = canon_geo_name(province_mentioned)
             ref_province_item = ref_data.provinces.get(key)
             if not ref_province_item:
-                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: Could not find province {key}")
+                logger.warning(f"id={policy_analysis_data.id}: Could not find province {key}")
                 continue
             province_code = ref_province_item.get('province_code')
             region_code = ref_province_item.get('region_code')
@@ -90,7 +90,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
             key = canon_geo_name(region_mentioned)
             ref_regions_item = ref_data.regions.get(key)
             if not ref_regions_item:
-                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: Could not find region {key}")
+                logger.warning(f"id={policy_analysis_data.id}: Could not find region {key}")
                 continue
             region_code = ref_regions_item.get('region_code')
             set_regions_codes.add(region_code)
@@ -98,7 +98,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
         for idx, country_mentioned in enumerate(countries_mentioned, 1):
             ref_country_item = ref_data.countries.get(country_mentioned)
             if not ref_country_item:
-                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {country_mentioned} not found in country list")
+                logger.warning(f"id={policy_analysis_data.id}: {country_mentioned} not found in country list")
                 continue
             country_code = ref_country_item.get('country_code')
             country_region_code = ref_country_item.get('country_region_code')
@@ -110,7 +110,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
         for idx, country_region_mentioned in enumerate(country_regions_mentioned, 1):
             ref_country_region_item = ref_data.country_regions.get(country_region_mentioned)
             if not ref_country_region_item:
-                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {country_region_mentioned} not found in country region list")
+                logger.warning(f"id={policy_analysis_data.id}: {country_region_mentioned} not found in country region list")
                 continue
             country_region_code = ref_country_region_item.get('country_region_code')
             continent_code = ref_country_region_item.get('continent_code')
@@ -120,7 +120,7 @@ async def ai_analysis_phase1(ai_master: AIMaster,
         for idx, continent_mentioned in enumerate(continents_mentioned, 1):
             ref_continent_item = ref_data.continents.get(continent_mentioned)
             if not ref_continent_item:
-                logger.warning(f"ai_analysis_phase1: id={policy_analysis_data.id}: {ref_continent_item} not found in continent list")
+                logger.warning(f"id={policy_analysis_data.id}: {ref_continent_item} not found in continent list")
                 continue            
             continent_code = ref_continent_item.get('continent_code')
             set_continents_codes.add(continent_code)                
@@ -141,22 +141,21 @@ async def ai_analysis_phase1(ai_master: AIMaster,
         policy_analysis_data.continent_tags = list(set_continents_codes)
 
         
-        logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: province_tags: {policy_analysis_data.province_tags}")
-        logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: region_tags: {policy_analysis_data.region_tags}")
-        logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: country_tags: {policy_analysis_data.country_tags}")
-        logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: country_region_tags: {policy_analysis_data.country_region_tags}")
-        logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: continent_tags: {policy_analysis_data.continent_tags}")
-        
+        logger.debug(f"id={policy_analysis_data.id}: province_tags: {policy_analysis_data.province_tags}")
+        logger.debug(f"id={policy_analysis_data.id}: region_tags: {policy_analysis_data.region_tags}")
+        logger.debug(f"id={policy_analysis_data.id}: country_tags: {policy_analysis_data.country_tags}")
+        logger.debug(f"id={policy_analysis_data.id}: country_region_tags: {policy_analysis_data.country_region_tags}")
+        logger.debug(f"id={policy_analysis_data.id}: continent_tags: {policy_analysis_data.continent_tags}")
 
         policy_analysis_data.success = True
     except Exception as e:
-        errmsg = f"ai_analysis_phase1: policy_analysis id={policy_analysis_data.id}: Error encountered. {e}"
+        errmsg = f"policy_analysis id={policy_analysis_data.id}: Error encountered. {e}"
         policy_analysis_data.success = False
         policy_analysis_data.errmsg = errmsg
         logger.error(errmsg)
     
-    logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: Phase 1 complete. success={policy_analysis_data.success}")
-    logger.info(f"ai_analysis_phase1: id={policy_analysis_data.id}: ### PHASE 1 ANALYSIS END #####################")
+    logger.debug(f"id={policy_analysis_data.id}: Phase 1 complete. success={policy_analysis_data.success}")
+    logger.info(f"id={policy_analysis_data.id}: ### PHASE 1 ANALYSIS END #####################")
     return policy_analysis_data.success
 
 def get_system_message(ref_data):
@@ -291,25 +290,40 @@ def canon_geo_name(name: str) -> str:
     return s
 
 if __name__ == "__main__":
-    text = """
-    From January 6 to 8, 2026, Zhai Jun, the Chinese government's Special Envoy for Middle East Affairs, visited Israel, where he met with Israeli Foreign Minister Eli Cohen, Director General of the Ministry of Foreign Affairs Alon Ushpiz, and Deputy Chairman of the National Security Council Eyal Hulata to conduct in-depth exchanges on bilateral relations. 
-    
-    Zhai Jun stated that the Chinese nation and the Jewish nation have a long-standing friendship, and maintaining healthy and stable development of China-Israel relations is in the fundamental interests of both peoples. China is willing to work together with Israel to maintain exchanges and mutually beneficial cooperation between the two countries and to continue the friendship between the peoples.
-    
-    The Israeli side expressed high importance to the development of China-Israel relations, reaffirmed its commitment to the one-China policy, and expressed willingness to further strengthen exchanges between various departments and levels of both countries, promoting new progress in practical cooperation across various fields.
-    
-    The two sides also exchanged views on regional hotspot issues.
-    """
-    
-    # INITIALILZE REFERENCE DATA
-    ref_data_obj = RefData()
-    ref_data = load_ref_data_once()    
-    
-    policy_analysis_data = PolicyAnalysisData()
-    policy_analysis_data.id = 1234
-    policy_analysis_data.english_translation = text
-    
-    ai_master =  AIMaster()
-    ai_model_params = AIModelParams()
-    
-    ai_analysis_phase1(ai_master=ai_master, ai_model_params=ai_model_params, policy=policy_analysis_data)
+    from analysis_scripts.database.neon_manager import NeonManager, NeonConnectionMode
+    try:
+        db_manager = NeonManager(NeonConnectionMode.POOLER)
+        if not db_manager:
+            logger.info("No database connection")
+            exit
+        ok = db_manager.db_connect()
+        if not ok:
+            logger.info("No database connection")
+            exit    
+        text = """
+        From January 6 to 8, 2026, Zhai Jun, the Chinese government's Special Envoy for Middle East Affairs, visited Israel, where he met with Israeli Foreign Minister Eli Cohen, Director General of the Ministry of Foreign Affairs Alon Ushpiz, and Deputy Chairman of the National Security Council Eyal Hulata to conduct in-depth exchanges on bilateral relations. 
+        
+        Zhai Jun stated that the Chinese nation and the Jewish nation have a long-standing friendship, and maintaining healthy and stable development of China-Israel relations is in the fundamental interests of both peoples. China is willing to work together with Israel to maintain exchanges and mutually beneficial cooperation between the two countries and to continue the friendship between the peoples.
+        
+        The Israeli side expressed high importance to the development of China-Israel relations, reaffirmed its commitment to the one-China policy, and expressed willingness to further strengthen exchanges between various departments and levels of both countries, promoting new progress in practical cooperation across various fields.
+        
+        The two sides also exchanged views on regional hotspot issues.
+        """
+        
+        # INITIALILZE REFERENCE DATA
+        ref_data_obj = RefData()
+        ref_data = load_ref_data_once()    
+        
+        policy_analysis_data = PolicyAnalysisData()
+        policy_analysis_data.id = 1234
+        policy_analysis_data.english_translation = text
+        
+        ai_master =  AIMaster()
+        ai_model_params = AIModelParams()
+        
+        ai_analysis_phase1(ai_master=ai_master, ai_model_params=ai_model_params, policy=policy_analysis_data)
+    except Exception as e:
+        logger.error(f"Error encountered. {e}")
+    finally:
+        if db_manager:
+            db_manager.db_close()    

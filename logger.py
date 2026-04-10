@@ -1,9 +1,11 @@
+# logger.py
+
 import logging
 import sys
 
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
         
     # Configure noisy third-party HTTP loggers ONCE
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -19,7 +21,7 @@ def get_logger(name: str) -> logging.Logger:
 
     # Console handler (stdout)
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(formatter)
 
     logger.addHandler(console_handler)

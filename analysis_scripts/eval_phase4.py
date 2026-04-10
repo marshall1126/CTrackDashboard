@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
-from analysis_scripts.policy_analysis_data import PolicyAnalysisData
+from analysis_scripts.models import PolicyAnalysisData
 from analysis_scripts.reference_data import get_ref_data,  RefData, load_ref_data_once
 
 TITLE_CHARACTER_COUNT_MAX = 150
@@ -46,7 +46,7 @@ async def ai_analysis_phase4(ai_master: AIMaster,
     if not policy_analysis_data:
         logger.error("No policy found")
         return False
-    logger.info(f"ai_analysis_phase4: id={policy_analysis_data.id}: ### PHASE 4 ANALYSIS START #####################")
+    logger.debug(f"ai_analysis_phase4: id={policy_analysis_data.id}: ### PHASE 4 ANALYSIS START #####################")
     english_translation = policy_analysis_data.english_translation
     if not english_translation:
         policy_analysis_data.errmsg =  f"id={policy_analysis_data.id}: No english_translation found"
@@ -73,7 +73,7 @@ async def ai_analysis_phase4(ai_master: AIMaster,
         
         json_result = json.loads(result)        
         policy_analysis_data.industry_ICB_tags = json_result.get('industry_ICB_names')
-        logger.info(f"ai_analysis_phase4: id={policy_analysis_data.id}: industry_icb_tags: {policy_analysis_data.industry_ICB_tags}")
+        logger.debug(f"id={policy_analysis_data.id}: industry_icb_tags: {policy_analysis_data.industry_ICB_tags}")
         
         policy_analysis_data.success = True
     except Exception as e:
@@ -82,8 +82,8 @@ async def ai_analysis_phase4(ai_master: AIMaster,
         policy_analysis_data.success = False
         policy_analysis_data.errmsg = errmsg
     
-    logger.info(f"ai_analysis_phase4: id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
-    logger.info (f"ai_analysis_phase4: id={policy_analysis_data.id}: ### PHASE 4 ANALYSIS END #####################")
+    logger.debug(f"id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
+    logger.info (f"id={policy_analysis_data.id}: ### PHASE 4 ANALYSIS END #####################")
     return policy_analysis_data.success
 
 def get_system_message():
@@ -195,27 +195,42 @@ def get_system_message():
     return prompt
 
 if __name__ == "__main__":
-    from analysis_scripts.db_neon_wrapper import read_all
-    from analysis_scripts import constants
-    from analysis_scripts.db_neon_wrapper import Policies
-    
-    table_name = constants.TableNames.TBL_POLICIES
-    where_clause = 'id= 19492'
-    ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
-    if not ok or not record:
-        logger.error("could not find record")
-    record0 = record[0]
-    text = record0.english_translation
-    
-    # INITIALILZE REFERENCE DATA
-    ref_data_obj = RefData()
-    ref_data = load_ref_data_once()    
-    
-    policy = PolicyAnalysisData()
-    policy.id = 1234
-    policy.english_translation = text
-    
-    ai_master =  AIMaster()
-    ai_model_params = AIModelParams()
-    
-    asyncio.run(ai_analysis_phase4(ai_master=ai_master, ai_model_params=ai_model_params, policy_analysis_data=policy))
+    try:
+        from analysis_scripts import constants
+        from analysis_scripts.models import Policies
+        from analysis_scripts.database.neon_manager import NeonManager, NeonConnectionMode
+        
+        db_manager = NeonManager(NeonConnectionMode.POOLER)
+        if not db_manager:
+            logger.info("No database connection")
+            exit
+        ok = db_manager.db_connect()
+        if not ok:
+            logger.info("No database connection")
+            exit
+        
+        table_name = constants.TableNames.TBL_POLICIES
+        where_clause = {id: 19492}
+        ok, record = db_manager.db_select(table_name=table_name, model=Policies, where=where_clause)
+        if not ok or not record:
+            logger.error("could not find record")
+        record0 = record[0]
+        text = record0.english_translation
+        
+        # INITIALILZE REFERENCE DATA
+        ref_data_obj = RefData()
+        ref_data = load_ref_data_once()    
+        
+        policy = PolicyAnalysisData()
+        policy.id = 1234
+        policy.english_translation = text
+        
+        ai_master =  AIMaster()
+        ai_model_params = AIModelParams()
+        
+        asyncio.run(ai_analysis_phase4(ai_master=ai_master, ai_model_params=ai_model_params, policy_analysis_data=policy))
+    except Exception as e:
+        logger.error(f"Error encountered. {e}")
+    finally:
+        if db_manager:
+            db_manager.db_close()    

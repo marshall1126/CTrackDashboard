@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
-from analysis_scripts.policy_analysis_data import PolicyAnalysisData
+from analysis_scripts.models import PolicyAnalysisData
 from analysis_scripts.reference_data import get_ref_data,  RefData, load_ref_data_once
 
 TITLE_CHARACTER_COUNT_MAX = 150
@@ -38,12 +38,12 @@ async def ai_analysis_phase2(ai_master: AIMaster,
                        ):
 
     if not policy_analysis_data:
-        logger.error(f"ai_analysis_phase2: No policy found")
+        logger.error(f"No policy found")
         return False
-    logger.info (f"ai_analysis_phase2: id={policy_analysis_data.id}: ### PHASE 2 ANALYSIS START #####################")
+    logger.debug (f"id={policy_analysis_data.id}: ### PHASE 2 ANALYSIS START #####################")
     english_translation = policy_analysis_data.english_translation
     if not english_translation:
-        policy_analysis_data.errmsg =  f"ai_analysis_phase2: id={policy_analysis_data.id}: No english_translation found"
+        policy_analysis_data.errmsg =  f"id={policy_analysis_data.id}: No english_translation found"
         logger.error(policy_analysis_data.errmsg)
         policy_analysis_data.success = False
         return False
@@ -84,8 +84,8 @@ async def ai_analysis_phase2(ai_master: AIMaster,
         policy_analysis_data.success = False
         policy_analysis_data.errmsg = errmsg
     
-    logger.info(f"ai_analysis_phase2: id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
-    logger.info (f"ai_analysis_phase2: id={policy_analysis_data.id}: ### PHASE 2 ANALYSIS END #####################")        
+    logger.debug(f"id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
+    logger.info (f"id={policy_analysis_data.id}: ### PHASE 2 ANALYSIS END #####################")        
     return policy_analysis_data.success
 
 def get_system_message():
@@ -135,25 +135,42 @@ def get_system_message():
     return prompt
 
 if __name__ == "__main__":
-    text = """
-    From January 6 to 8, 2026, Zhai Jun, the Chinese government's Special Envoy for Middle East Affairs, visited Israel, where he met with Israeli Foreign Minister Eli Cohen, Director General of the Ministry of Foreign Affairs Alon Ushpiz, and Deputy Chairman of the National Security Council Eyal Hulata to conduct in-depth exchanges on bilateral relations. 
+    from analysis_scripts.database.neon_manager import NeonManager, NeonConnectionMode
     
-    Zhai Jun stated that the Chinese nation and the Jewish nation have a long-standing friendship, and maintaining healthy and stable development of China-Israel relations is in the fundamental interests of both peoples. China is willing to work together with Israel to maintain exchanges and mutually beneficial cooperation between the two countries and to continue the friendship between the peoples.
-    
-    The Israeli side expressed high importance to the development of China-Israel relations, reaffirmed its commitment to the one-China policy, and expressed willingness to further strengthen exchanges between various departments and levels of both countries, promoting new progress in practical cooperation across various fields.
-    
-    The two sides also exchanged views on regional hotspot issues.
-    """
-    
-    # INITIALILZE REFERENCE DATA
-    ref_data_obj = RefData()
-    ref_data = load_ref_data_once()    
-    
-    policy = PolicyAnalysisData()
-    policy.id = 1234
-    policy.english_translation = text
-    
-    ai_master =  AIMaster()
-    ai_model_params = AIModelParams()
-    
-    ai_analysis_phase2(ai_master=ai_master, ai_model_params=ai_model_params, policy=policy)
+    try:
+        db_manager = NeonManager(NeonConnectionMode.POOLER)
+        if not db_manager:
+            logger.info("No database connection")
+            exit
+        ok = db_manager.db_connect()
+        if not ok:
+            logger.info("No database connection")
+            exit
+            
+            text = """
+            From January 6 to 8, 2026, Zhai Jun, the Chinese government's Special Envoy for Middle East Affairs, visited Israel, where he met with Israeli Foreign Minister Eli Cohen, Director General of the Ministry of Foreign Affairs Alon Ushpiz, and Deputy Chairman of the National Security Council Eyal Hulata to conduct in-depth exchanges on bilateral relations. 
+            
+            Zhai Jun stated that the Chinese nation and the Jewish nation have a long-standing friendship, and maintaining healthy and stable development of China-Israel relations is in the fundamental interests of both peoples. China is willing to work together with Israel to maintain exchanges and mutually beneficial cooperation between the two countries and to continue the friendship between the peoples.
+            
+            The Israeli side expressed high importance to the development of China-Israel relations, reaffirmed its commitment to the one-China policy, and expressed willingness to further strengthen exchanges between various departments and levels of both countries, promoting new progress in practical cooperation across various fields.
+            
+            The two sides also exchanged views on regional hotspot issues.
+            """
+            
+            # INITIALILZE REFERENCE DATA
+            ref_data_obj = RefData()
+            ref_data = load_ref_data_once()    
+            
+            policy = PolicyAnalysisData()
+            policy.id = 1234
+            policy.english_translation = text
+            
+            ai_master =  AIMaster()
+            ai_model_params = AIModelParams()
+            
+            ai_analysis_phase2(ai_master=ai_master, ai_model_params=ai_model_params, policy=policy)
+    except Exception as e:
+        logger.error(f"Error encountered. {e}")
+    finally:
+        if db_manager:
+            db_manager.db_close()    

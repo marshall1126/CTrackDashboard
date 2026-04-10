@@ -26,77 +26,38 @@ logger = get_logger(__name__)
 from analysis_scripts import constants
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
-from analysis_scripts.constants import TableNames
-from analysis_scripts.db_neon_pooler import get_db_connection, neon_select, neon_delete, neon_insert_record
-from analysis_scripts.db_neon_wrapper import Policies,  PoliciesErrors
-from analysis_scripts.db_supa import supa_delete_one_record,  supa_select_count
-from analysis_scripts.db_supa_wrapper import read_all_final_stories,  StoryAllFinal
 from analysis_scripts.eval_phase1 import ai_analysis_phase1
 from analysis_scripts.eval_phase2 import ai_analysis_phase2
 from analysis_scripts.eval_phase3 import ai_analysis_phase3
 from analysis_scripts.eval_phase4 import ai_analysis_phase4
 from analysis_scripts.eval_phase5 import ai_analysis_phase5
 from analysis_scripts.jsonfileio import read_from_jsonl, write_to_jsonl
-from analysis_scripts.policy_analysis_data import PolicyAnalysisData
+from analysis_scripts.models import PolicyAnalysisData
 from analysis_scripts.reference_data import load_ref_data_once,  get_ref_data
 from analysis_scripts.translator import Translator
 from analysis_scripts.setup import reload_all
-
-#####################################################################
-# DELETE_FROM_SUPA
-#####################################################################          
-def delete_from_supa(policy_analysis_data: PolicyAnalysisData):
-    source_url = policy_analysis_data.source_url
-    fldName =  StoryAllFinal.FIELD_LINK
-    fldVal = source_url
-    ok = supa_delete_one_record (TableNames.TBL_STORIES_ALL_FINAL,  fldName, fldVal)
-    if not ok:
-        return False
-    return True
-
-#####################################################################
-# INSERT_POLICY_ERROR
-# Insert outline of policy to error table
-#####################################################################    
-def insert_policy_error(policy_analysis_data: PolicyAnalysisData) -> bool:
-    try:
-        policy_error: PoliciesErrors = PoliciesErrors()
-        
-        policy_error.chinese_original = policy_analysis_data.chinese_original
-        policy_error.dept_en = policy_analysis_data.dept_en
-        policy_error.errmsg = policy_analysis_data.errmsg
-        policy_error.source_url =  policy_analysis_data.source_url
-        policy_error.time = policy_analysis_data.time
-        policy_error.title_cn = policy_analysis_data.title_cn
-        policy_error.status = 0
-        
-        # SAVE TO OUTPUT FILE
-        # write_to_jsonl(policy_error,  filename_prefix='policy_error')
-        # SAVE RECORD
-        ok = neon_insert_record(
-            table_name=constants.TableNames.TBL_POLICIES_ERRORS,
-            data=policy_error
-        )        
-        return ok
-    except Exception as e:
-        logger.error(f"insert_policy_error: Error encountered. {e}")
-        return False   
+from analysis_scripts.database.base_database import BaseDatabaseManager
+from analysis_scripts.database.neon_manager import NeonConnectionMode, NeonManager
+from analysis_scripts.models import Policies, PoliciesErrors, StoryAllFinal
 
 # LOCAL CONSTANTS
 class Analysis:
     def __init__(self):
         try:
-            self.neon_db_conn =  get_db_connection()
-            if not self.neon_db_conn:
-                logger.info("No neon database connection")
+            self.db_manager: BaseDatabaseManager = NeonManager(NeonConnectionMode.POOLER)
+            if not self.db_manager:
+                logger.info("No database connection")
+            ok = self.db_manager.db_connect()
+            if not ok:
+                logger.info("No database connection")            
             self.ai_master = AIMaster()
             self.ai_model_params = AIModelParams()                       
             self.translator = Translator(self.ai_master)
             if not self.translator:
                 logger.info("No translator found")
-            self.ref_data = load_ref_data_once()
-            if not self.ref_data:
-                logger.info("No reference data found")
+            ref_data = load_ref_data_once(self.db_manager)
+            if not ref_data:
+                logger.error("No reference data found")
         except Exception as e:
             logger.error(f"analysis innitialization failed. {e}")
 
@@ -111,17 +72,17 @@ class Analysis:
         
         try:
             # read the final stories table
-            status, supa_stories = read_all_final_stories(limit=10)
+            status, stories = self.db_manager.db_select(table_name=constants.TableNames.SCRAPE_STORIES_ALL_FINAL, limit=10, dataclass=StoryAllFinal)
             if not status:
-                logger.info (f"preprocess: Error {constants.TableNames.TBL_STORIES_ALL_FINAL}")
+                logger.info (f"preprocess: Error {constants.TableNames.SCRAPE_STORIES_ALL_FINAL}")
                 return False, []
-            if not supa_stories:
+            if not stories:
                 logger.info ("preprocess: No stories found")
                 return True, []            
             
             # eliminate any story where success flag is false
             # Keep only successful stories
-            successful_stories = [s for s in supa_stories if s.success]
+            successful_stories = [s for s in stories if s.success]
             
             # Remove stories with duplicate links
             seen_links = set()
@@ -134,7 +95,7 @@ class Analysis:
                 seen_links.add(link)
                 unique_stories.append(s)            
         
-            removed_count = len(supa_stories) - len(unique_stories)
+            removed_count = len(stories) - len(unique_stories)
             logger.info(f"preprocess: {len(unique_stories)} good stories, {removed_count} filtered stories")
             
             # eliminate rows where duplicates exist
@@ -142,17 +103,21 @@ class Analysis:
             for idx, story in enumerate(unique_stories, 1):
                 source_url = story.link
                 
-                where_clause = "source_url = %s"
-                params = (source_url,)
-                
-                ok, found1 = neon_select(constants.TableNames.TBL_POLICIES_ERRORS, where_clause=where_clause, params=params)
+                ok, found1 = self.db_manager.db_select(
+                    constants.TableNames.TBL_POLICIES_ERRORS,
+                    where={"source_url": source_url}
+                )
                 if not ok: # System error
                     return False, []
                 # ignore and continue if found in errors table
                 if found1:
                     continue
                 # look in the POLICIES TABLE using the same where condition
-                ok, found2 = neon_select(constants.TableNames.TBL_POLICIES, where_clause=where_clause, params=params)
+                ok, found2 = self.db_manager.db_select(
+                    constants.TableNames.TBL_POLICIES,
+                    where={"source_url": source_url}
+                )
+                    
                 if not ok: # System error
                     return False, []
                 # ignore and continue if found in policies table
@@ -225,14 +190,14 @@ class Analysis:
                 logger.error(f"evaluate policy {policy_analysis_data.id}: {policy_analysis_data.errmsg}")
                 return False
     
-            # if policy_analysis is ok and insert_policy worked, delete from supa database
-            ok = delete_from_supa(policy_analysis_data)
+            # if policy_analysis is ok and insert_policy worked, delete from database
+            ok, _ = self.db_manager.db_delete(constants.TableNames.SCRAPE_STORIES_ALL_FINAL, where={StoryAllFinal.FIELD_LINK: policy_analysis_data.source_url})
             if not ok:
                 policy_analysis_data.success = False
-                policy_analysis_data.errmsg = "Could not delete from supa database"
+                policy_analysis_data.errmsg = "Could not delete from database"
                 logger.error(f"evaluate policy {policy_analysis_data.id}: {policy_analysis_data.errmsg}")
                 return False
-            
+            logger.info(f"Removed story from {constants.TableNames.SCRAPE_STORIES_ALL_FINAL}")
             policy_analysis_data.success = True
             return True
     
@@ -240,11 +205,11 @@ class Analysis:
             if not policy_analysis_data.success:
                 logger.error(f"Failure for {policy_analysis_data.id}")
                 # Add to error table
-                ok = insert_policy_error(policy_analysis_data)
-                if ok: # if successful, delete from supa table
-                    ok = delete_from_supa(policy_analysis_data)
+                ok = self.insert_policy_error(policy_analysis_data)
+                if ok: # if successful, delete from table
+                    ok, _ = self.db_manager.db_delete(constants.TableNames.SCRAPE_STORIES_ALL_FINAL, where={StoryAllFinal.FIELD_LINK: policy_analysis_data.source_url})
                     if not ok:
-                        policy_analysis_data.errmsg = "Could not delete from supa database"
+                        policy_analysis_data.errmsg = "Could not delete from database"
                         logger.error(f"evaluate policy {policy_analysis_data.id}: {policy_analysis_data.errmsg}")
             else:            
                 ok = True
@@ -291,7 +256,7 @@ class Analysis:
     #####################################################################
     # INSERT_POLICY
     # insert working data into policies table
-    #####################################################################    
+    #####################################################################
     def insert_policy(self, policy_analysis_data: PolicyAnalysisData) -> bool:
         try:
             policy: Policies = Policies()
@@ -317,7 +282,7 @@ class Analysis:
             if isinstance(policy_analysis_data.time, str):
                 policy.time = policy_analysis_data.time
             elif isinstance(policy_analysis_data.time, dt.datetime):
-                policy.time = policy_analysis_data.time.strftime("%Y-%m-%d")
+                policy.time = policy_analysis_data.time
             else:
                 raise TypeError(f"Unsupported type for time: {type(time)}")            
             
@@ -341,7 +306,7 @@ class Analysis:
             # write_to_jsonl(policy,  filename_prefix='policy_new')
             # SAVE RECORD
             policy.status = 1
-            ok = neon_insert_record(
+            ok = self.db_manager.db_insert(
                 table_name=constants.TableNames.TBL_POLICIES,
                 data=policy,
                 exclude_list=['id']
@@ -350,7 +315,34 @@ class Analysis:
         except Exception as e:
             logger.error(f"insert_neondb: Error encountered. {e}")
             return False
-    
+
+    #####################################################################
+    # INSERT_POLICY_ERROR
+    # Insert outline of policy to error table
+    #####################################################################    
+    def insert_policy_error(self, policy_analysis_data: PolicyAnalysisData) -> bool:
+        try:
+            policy_error: PoliciesErrors = PoliciesErrors()
+            
+            policy_error.chinese_original = policy_analysis_data.chinese_original
+            policy_error.dept_en = policy_analysis_data.dept_en
+            policy_error.errmsg = policy_analysis_data.errmsg
+            policy_error.source_url =  policy_analysis_data.source_url
+            policy_error.time = policy_analysis_data.time
+            policy_error.title_cn = policy_analysis_data.title_cn
+            policy_error.status = 0
+            
+            # SAVE TO OUTPUT FILE
+            # write_to_jsonl(policy_error,  filename_prefix='policy_error')
+            # SAVE RECORD
+            ok = self.db_manager.db_insert(
+                table_name=constants.TableNames.TBL_POLICIES_ERRORS,
+                data=policy_error
+            )        
+            return ok
+        except Exception as e:
+            logger.error(f"insert_policy_error: Error encountered. {e}")
+            return False           
     
     ########################################################################################
     # RUN_ANALYSIS
@@ -358,19 +350,13 @@ class Analysis:
     ########################################################################################
     def run_analysis(self, max_concurrency: int = 5):
         try:
-            print ("run analysis entered")
-            
-            if not self.ref_data:
-                logger.error("Could not get reference data")
-                return False
-            
-            # configure_db_pool_for_concurrency(max_concurrency=max_concurrency)
+            logger.info ("run analysis entered")
             
             # returns a list of stories to analyze 
             ok, story_list = self.preprocess()
             
             if not ok:
-                logger.info("Error encountered")
+                logger.error("Error encountered")
                 return False
             if not story_list or len(story_list) == 0:
                 logger.info("No stories found")
@@ -382,7 +368,7 @@ class Analysis:
                 new_policy: PolicyAnalysisData = PolicyAnalysisData()
                 new_policy.id = idx
                 new_policy.title_cn = story.title
-                new_policy.chinese_original = story.storytext
+                new_policy.chinese_original = story.story_text
                 new_policy.time = story.date
                 new_policy.dept_en = story.dept
                 new_policy.source_url = story.link
@@ -437,7 +423,16 @@ async def test2():
     from analysis_scripts import constants
     
     try:
-        ref_data = load_ref_data_once()
+        db_manager = NeonManager(NeonConnectionMode.POOLER)
+        if not db_manager:
+            logger.info("No database connection")
+            exit
+        ok = db_manager.db_connect()
+        if not ok:
+            logger.info("No database connection")
+            exit
+            
+        ref_data = load_ref_data_once(db_manager)
         if not ref_data:
             logger.info("No reference data found")
             return
@@ -468,6 +463,7 @@ async def test2():
         dept_id = record0.department_id
         policy_analysis_data.dept_en = next((code for code, info in ref_data.departments.items() if info.get('id') == dept_id), None)
         status = await analysis.full_ai_analysis(policy_analysis_data)
+        db_manager.db_close()
     except Exception as e:
         print(f"Error encounter. {e}")
         pass
@@ -476,9 +472,15 @@ async def test2():
             await analysis.aclose()
    
 async def test3():
-    from analysis_scripts.db_neon_wrapper import read_all
+    db_manager = NeonManager(NeonConnectionMode.POOLER)
+    if not db_manager:
+        logger.info("No database connection")
+    ok = db_manager.db_connect()
+    if not ok:
+        logger.info("No database connection")
+        
     try:
-        ref_data = load_ref_data_once()
+        ref_data = load_ref_data_once(db_manager)
         if not ref_data:
             logger.info("No reference data found")
             return
@@ -488,7 +490,7 @@ async def test3():
         policy_analysis_data = PolicyAnalysisData()
         table_name = constants.TableNames.TBL_POLICIES
         where_clause = 'id= 19492'
-        ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
+        ok, record = db_manager.db_select(table_name=table_name, model=Policies, where_clause=where_clause)
         if not ok or not record:
             logger.error("could not find record")
             return
@@ -502,7 +504,7 @@ async def test3():
         policy_analysis_data.time = record0.time
         policy_analysis_data.id = 1
         ok = await analysis.evaluate(policy_analysis_data)
-       
+        db_manager.db_close()
         
     except Exception as e:
         print(f"Error encountered. {e}")
@@ -523,20 +525,27 @@ def test_error():
         return    
     policy_analysis_data = PolicyAnalysisData(**raw)
     # print (policy_analysis_data.time)
-    ok = insert_policy_error(policy_analysis_data=policy_analysis_data)
+    analysis: Analysis = Analysis()
+    ok = analysis.insert_policy_error(policy_analysis_data=policy_analysis_data)
     print(f"Test insert into error table: {ok}")
 
 def test_all():
-    # Initialize supa database, clear errors and policies tables
+    db_manager = NeonManager(NeonConnectionMode.POOLER)
+    if not db_manager:
+        logger.info("No database connection")
+    ok = db_manager.db_connect()
+    if not ok:
+        logger.info("No database connection")          
+    # Initialize database, clear errors and policies tables
     reload_all()
-    ok, count = supa_select_count(constants.TableNames.TBL_STORIES_ALL_FINAL)
+    ok, count = db_manager.db_count(constants.TableNames.TBL_STORIES_ALL_FINAL)
     if not ok:
         exit(0)
     logger.info(f"{constants.TableNames.TBL_STORIES_ALL_FINAL} contains {count} records")
     # initialize analysis
     analysis: Analysis = Analysis()
     analysis.run_analysis()
-    ok, count = supa_select_count(constants.TableNames.TBL_STORIES_ALL_FINAL)
+    ok, count = db_manager.db_count(constants.TableNames.TBL_STORIES_ALL_FINAL)
     if not ok:
         exit(0)
     logger.info(f"{constants.TableNames.TBL_STORIES_ALL_FINAL} contains {count} records")

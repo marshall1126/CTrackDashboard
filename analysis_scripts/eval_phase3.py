@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
-from analysis_scripts.policy_analysis_data import PolicyAnalysisData
+from analysis_scripts.models import PolicyAnalysisData
 from analysis_scripts.reference_data import get_ref_data,  RefData, load_ref_data_once
 
 TITLE_CHARACTER_COUNT_MAX = 150
@@ -32,12 +32,12 @@ async def ai_analysis_phase3(ai_master: AIMaster,
                        policy_analysis_data: PolicyAnalysisData
                        ):
     if not policy_analysis_data:
-        logger.error("ai_analysis_phase3: No policy found")
+        logger.error("No policy found")
         return False
-    logger.info(f"ai_analysis_phase3: id={policy_analysis_data.id}: ### PHASE 3 ANALYSIS START #####################")
+    logger.info(f"id={policy_analysis_data.id}: ### PHASE 3 ANALYSIS START #####################")
     english_translation = policy_analysis_data.english_translation
     if not english_translation:
-        policy_analysis_data.errmsg =  f"ai_analysis_phase3: id={policy_analysis_data.id}: No english_translation found"
+        policy_analysis_data.errmsg =  f"id={policy_analysis_data.id}: No english_translation found"
         logger.error(policy_analysis_data.errmsg)
         policy_analysis_data.success = False
         return False
@@ -63,7 +63,7 @@ async def ai_analysis_phase3(ai_master: AIMaster,
         
         policy_analysis_data.topics_tags = json_result.get('topics_tags', [])
         
-        logger.info (f"ai_analysis_phase3: id={policy_analysis_data.id}: topics_tags: {policy_analysis_data.topics_tags}"[:100])
+        logger.debug (f"id={policy_analysis_data.id}: topics_tags: {policy_analysis_data.topics_tags}"[:100])
                 
         policy_analysis_data.success = True
     except Exception as e:
@@ -72,7 +72,7 @@ async def ai_analysis_phase3(ai_master: AIMaster,
         policy_analysis_data.success = False
         policy_analysis_data.errmsg = errmsg
     
-    logger.info(f"ai_analysis_phase3: id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
+    logger.debug(f"id={policy_analysis_data.id}: complete. success={policy_analysis_data.success}")
     logger.info(f"ai_analysis_phase3: id={policy_analysis_data.id}: ### PHASE 3 ANALYSIS END #####################")            
     return policy_analysis_data.success
 

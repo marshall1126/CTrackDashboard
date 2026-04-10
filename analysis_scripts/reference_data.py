@@ -1,3 +1,5 @@
+# analysis_scripts/reference_data.py
+
 from pathlib import Path
 import sys
 
@@ -10,8 +12,9 @@ from logger import get_logger
 logger = get_logger(__name__)
 logger.propagate = False
 
-from typing import Dict, Any, Optional
-from analysis_scripts.db_neon_wrapper import read_all
+from typing import Optional
+from analysis_scripts.database.base_database import BaseDatabaseManager
+from analysis_scripts.database.neon_manager import NeonConnectionMode, NeonManager
 
 _ref_data_cache: Optional["RefData"] = None
 
@@ -26,7 +29,7 @@ REF_REGIONS = "regions"
 REF_TOPICS = "topics"
 
 class RefData:
-    def __init__(self):
+    def __init__(self, db_manager: BaseDatabaseManager):
         self.continents = None
         self.countries = None
         self.country_regions = None   # fixed typo
@@ -35,31 +38,30 @@ class RefData:
         self.provinces = None         # fixed typo
         self.regions = None
         self.topics = None
+        self.db_manager = db_manager
         
-    @classmethod
-    def load_from_db(cls) -> "RefData":
+    def load_from_db(self) -> "RefData":
         """Loads all reference data from DB and returns a populated RefData."""
-        obj = cls()
-        conn = None
-        cur = None
         try:
-            ok, results = read_all(table_name=REF_INDUSTRIES)
+            ok, results = self.db_manager.db_select(table_name=REF_INDUSTRIES)
             if not ok:
                 logger.error(f"Failed to read {REF_INDUSTRIES}")
                 return False, {}        # cur.execute(f"SELECT id, name FROM {REF_INDUSTRIES} ORDER BY name")
             industries = {r["name"]: r["id"] for r in results}
-    
-            ok, results = read_all(table_name=REF_TOPICS)
+            logger.debug(f"Fetched {len(industries)} industries")
+            
+            ok, results = self.db_manager.db_select(table_name=REF_TOPICS)
             if not ok:
                 logger.error(f"Failed to read {REF_TOPICS}")
                 return False, {}
             topics = {r["name_en"]: r["id"] for r in results}
+            logger.debug(f"Fetched {len(topics)} topics")
     
      
             ###################################################################################
             # DEPARTMENTS
             ###################################################################################
-            ok, results = read_all(table_name=REF_DEPARTMENTS)
+            ok, results = self.db_manager.db_select(table_name=REF_DEPARTMENTS)
             if not ok:
                 logger.error(f"Failed to read {REF_DEPARTMENTS}")
                 return False, {}
@@ -79,17 +81,17 @@ class RefData:
                         'name_en': row.get('name_en') or row.get('full_name', ''),
                         'url_pattern': row.get('url_pattern')
                     }
-            #logger.info(f"Fetched {len(departments)} departments")
+            logger.debug(f"Fetched {len(departments)} departments")
     
             ###################################################################################
             # provinces
             ###################################################################################
-            ok, results = read_all(table_name=REF_PROVINCES)
+            ok, results = self.db_manager.db_select(table_name=REF_PROVINCES)
             if not ok:
                 logger.error(f"Failed to read {REF_PROVINCES}")
                 return False, {}
             provinces = {}
-            #logger.info(f"Retrieved {len(province_rows)} province rows")
+            # logger.debug(f"Retrieved {len(results)} province rows")
     
             for row in results:
                 if not isinstance(row, dict):
@@ -106,7 +108,7 @@ class RefData:
                         'region_name': row.get('region_name'),
                         'region_code': row.get('region_code')
                     }
-            #logger.info(f"Fetched {len(provinces)} provinces")
+            logger.debug(f"Fetched {len(provinces)} provinces")
     
             ###################################################################################
             # REGIONS
@@ -122,12 +124,12 @@ class RefData:
                         'region_name': region_name,
                         'region_code': province.get('region_code', '')
                     }
-            #logger.info(f"Fetched {len(regions)} distinct regions")
+            logger.debug(f"Fetched {len(regions)} distinct regions")
     
             ###################################################################################
             # COUNNTRIES
             ###################################################################################
-            ok, results = read_all(table_name=REF_COUNTRIES)
+            ok, results = self.db_manager.db_select(table_name=REF_COUNTRIES)
             if not ok:
                 logger.error(f"Failed to read {REF_COUNTRIES}")
                 return False, {}
@@ -136,7 +138,7 @@ class RefData:
             continents = {}
     
             country_rows = results
-            #logger.info(f"Retrieved {len(country_rows)} country rows")
+            # logger.debug(f"Retrieved {len(country_rows)} country rows")
     
             for row in country_rows:
                 if not isinstance(row, dict):
@@ -170,18 +172,18 @@ class RefData:
                             'continent_name': continent_name,
                             'continent_code': row.get('continent_code') or ''
                         }
-            logger.info(f"Fetched {len(countries)} countries")
-            logger.info(f"Fetched {len(country_regions)} countrie regions")
-            logger.info(f"Fetched {len(continents)} continents")
+            logger.debug(f"Fetched {len(countries)} countries")
+            logger.debug(f"Fetched {len(country_regions)} countrie regions")
+            logger.debug(f"Fetched {len(continents)} continents")
     
             #logger.info("Fetching ICB industries...")
-            ok, results = read_all(table_name=REF_INDUSTRY_ICB)
+            ok, results = self.db_manager.db_select(table_name=REF_INDUSTRY_ICB)
             if not ok:
                 logger.error(f"Failed to read {REF_INDUSTRY_ICB}")
                 return False, {}        
             icb_industries = {}
             icb_rows = results
-            #logger.info(f"Retrieved {len(icb_rows)} ICB industry rows")
+            # logger.debug(f"Retrieved {len(icb_rows)} ICB industry rows")
     
             for row in icb_rows:
                 if not isinstance(row, dict):
@@ -198,17 +200,17 @@ class RefData:
                         'icb_code': row.get('icb_code', ''),
                         'scope': row.get('scope', '')
                     }
-            logger.info(f"Fetched {len(icb_industries)} ICB industries")
+            logger.debug(f"Fetched {len(icb_industries)} ICB industries")
 
-            obj.continents = continents
-            obj.countries = countries
-            obj.country_regions = country_regions
-            obj.departments =  departments
-            obj.icb_industries = icb_industries
-            obj.industries = industries
-            obj.provinces = provinces
-            obj.regions = regions
-            obj.topics = topics
+            self.continents = continents
+            self.countries = countries
+            self.country_regions = country_regions
+            self.departments =  departments
+            self.icb_industries = icb_industries
+            self.industries = industries
+            self.provinces = provinces
+            self.regions = regions
+            self.topics = topics
 
             logger.info("Fetch completed successfully")
     
@@ -216,23 +218,21 @@ class RefData:
             logger.error(f"Error fetching reference data: {e}", exc_info=True)
             return {}
         finally:
-            if cur:
-                cur.close()
-            if conn:
-                conn.close()
-        return obj
+            pass
+        return self
 
 #########################################################################
 # NON CLASS METHODS
 #########################################################################
-def load_ref_data_once() -> RefData:
+def load_ref_data_once(db_manager: BaseDatabaseManager) -> RefData:
     """
     Call this in the parent process *before* spawning workers.
     Loads from DB once and stores in a module-global cache.
     """
     global _ref_data_cache
     if _ref_data_cache is None:
-        _ref_data_cache = RefData.load_from_db()
+        ref_data = RefData(db_manager)
+        _ref_data_cache = ref_data.load_from_db()
         logger.info("Reference data loaded into cache")
     return _ref_data_cache
 
@@ -246,6 +246,12 @@ def get_ref_data() -> RefData:
     return _ref_data_cache
             
 if __name__ == "__main__":
-    ref_data_obj = RefData()
-    ref_data = load_ref_data_once()
+    db_manager = NeonManager(NeonConnectionMode.POOLER)
+    if not db_manager:
+        logger.info("No database connection")
+    ok = db_manager.db_connect()
+    if not ok:
+        logger.info("No database connection")       
+    ref_data_obj = RefData(db_manager)
+    ref_data = load_ref_data_once(db_manager)
     print (ref_data)
