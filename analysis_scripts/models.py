@@ -3,6 +3,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 
 ###############################################################################
+# AnalysisLastUpdt
+###############################################################################
+class AnalysisLastUpdt(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    
+    idx: Optional[int] = None
+    last_updt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    count: int = 0
+
+###############################################################################
 # KeyPoint
 ###############################################################################
 class KeyPoint(BaseModel):

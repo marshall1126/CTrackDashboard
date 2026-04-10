@@ -38,7 +38,7 @@ from analysis_scripts.translator import Translator
 from analysis_scripts.setup import reload_all
 from analysis_scripts.database.base_database import BaseDatabaseManager
 from analysis_scripts.database.neon_manager import NeonConnectionMode, NeonManager
-from analysis_scripts.models import Policies, PoliciesErrors, StoryAllFinal
+from analysis_scripts.models import Policies, PoliciesErrors, StoryAllFinal, AnalysisLastUpdt
 
 # LOCAL CONSTANTS
 class Analysis:
@@ -58,6 +58,7 @@ class Analysis:
             ref_data = load_ref_data_once(self.db_manager)
             if not ref_data:
                 logger.error("No reference data found")
+            self.policy_count = 0
         except Exception as e:
             logger.error(f"analysis innitialization failed. {e}")
 
@@ -72,7 +73,7 @@ class Analysis:
         
         try:
             # read the final stories table
-            status, stories = self.db_manager.db_select(table_name=constants.TableNames.SCRAPE_STORIES_ALL_FINAL, limit=10, dataclass=StoryAllFinal)
+            status, stories = self.db_manager.db_select(table_name=constants.TableNames.SCRAPE_STORIES_ALL_FINAL, limit=1, dataclass=StoryAllFinal)
             if not status:
                 logger.info (f"preprocess: Error {constants.TableNames.SCRAPE_STORIES_ALL_FINAL}")
                 return False, []
@@ -310,7 +311,8 @@ class Analysis:
                 table_name=constants.TableNames.TBL_POLICIES,
                 data=policy,
                 exclude_list=['id']
-            )        
+            )
+            self.policy_count += 1
             return ok
         except Exception as e:
             logger.error(f"insert_neondb: Error encountered. {e}")
@@ -349,6 +351,9 @@ class Analysis:
     # returns: True if processing completed successfully, False if error encountered
     ########################################################################################
     def run_analysis(self, max_concurrency: int = 5):
+        if not self.db_manager:
+            logger.error("No db manager")
+            return
         try:
             logger.info ("run analysis entered")
             
@@ -413,15 +418,17 @@ class Analysis:
             return False
         finally:
             logger.info("*** ANALYSIS DONE")
+            if self.db_manager:
+                updt_record: AnalysisLastUpdt = AnalysisLastUpdt()
+                updt_record.count = self.policy_count
+                ok = self.db_manager.db_insert(table_name=constants.TableNames.TBL_ANALYSIS_LAST_UPDT, data=updt_record, exclude_list=['idx'])
+                self.db_manager.db_close()
         
 def test1():
     analysis = Analysis()
     analysis.run_analysis()
     
 async def test2():
-    from analysis_scripts.db_neon_wrapper import read_all
-    from analysis_scripts import constants
-    
     try:
         db_manager = NeonManager(NeonConnectionMode.POOLER)
         if not db_manager:
@@ -440,8 +447,8 @@ async def test2():
         analysis = Analysis()
         
         table_name = constants.TableNames.TBL_POLICIES
-        where_clause = 'id= 19492'
-        ok, record = read_all(table_name=table_name, model=Policies, where_clause=where_clause)
+        where_clause = {'id': 19492}
+        ok, record = db_manager.db_select(table_name=table_name, dataclass=Policies, where=where_clause)
         if not ok or not record:
             logger.error("could not find record")
         record0 = record[0]
@@ -489,8 +496,8 @@ async def test3():
         
         policy_analysis_data = PolicyAnalysisData()
         table_name = constants.TableNames.TBL_POLICIES
-        where_clause = 'id= 19492'
-        ok, record = db_manager.db_select(table_name=table_name, model=Policies, where_clause=where_clause)
+        where_clause = {'id': 19492}
+        ok, record = db_manager.db_select(table_name=table_name, dataclass=Policies, where=where_clause)
         if not ok or not record:
             logger.error("could not find record")
             return
