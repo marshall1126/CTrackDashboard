@@ -287,7 +287,25 @@
 <body>
 
 <header>
-  <div class="logo">ctrack / analysis monitor</div>
+  <div class="logo">
+  ctrack /
+  <select id="monitor-select" onchange="navigateTo(this.value)" style="
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+  ">
+    <option value="dashboard.html">analysis monitor</option>
+    <option value="scraper.html">scraper</option>
+  </select>
+</div>
   <div class="header-right">
     <div class="live-dot"></div>
     <span class="last-fetched" id="last-fetched">—</span>
@@ -337,6 +355,10 @@
 </main>
 
 <script>
+  function navigateTo(page) {
+    window.location.href = '/static/' + page;
+  }
+
   let allData = [];
   let sortField = 'idx';
   let sortDir = 'desc';
@@ -358,7 +380,7 @@
       document.getElementById('th-' + f).classList.toggle('sorted', f === field);
       const arr = document.getElementById('arr-' + f);
       if (f === field) {
-        arr.textContent = sortDir === 'desc' ? \u8595: \u8593;
+        arr.textContent = sortDir === 'desc' ? '\u2193' : '\u2191';
         arr.classList.add('active');
       } else {
         arr.textContent = '';
