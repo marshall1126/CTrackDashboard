@@ -20,7 +20,6 @@ class NeonConnectionMode(Enum):
     DIRECT = "direct"
 
 class NeonManager(BaseDatabaseManager):
-
     def __init__(self, mode: NeonConnectionMode = NeonConnectionMode.POOLER):
         self._mode = mode
         self._conn: Optional[psycopg.Connection] = None

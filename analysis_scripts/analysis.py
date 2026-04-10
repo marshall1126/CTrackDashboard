@@ -23,7 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from logger import get_logger
 logger = get_logger(__name__)
 
-from analysis_scripts import constants
+import analysis_scripts.constants as constants
 from analysis_scripts.ai_master import AIMaster
 from analysis_scripts.ai_model_params import AIModelParams
 from analysis_scripts.eval_phase1 import ai_analysis_phase1

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTrack — Analysis Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f12;
+    --surface: #151820;
+    --surface2: #1c2029;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #3b82f6;
+    --accent-dim: rgba(59,130,246,0.12);
+    --success: #10b981;
+    --success-dim: rgba(16,185,129,0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 400;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .last-fetched {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .refresh-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .refresh-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+
+  .page-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: fadein 0.4s forwards;
+  }
+
+  .metric:nth-child(1) { animation-delay: 0.05s; }
+  .metric:nth-child(2) { animation-delay: 0.1s; }
+  .metric:nth-child(3) { animation-delay: 0.15s; }
+
+  @keyframes fadein {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .metric-value.sm { font-size: 16px; }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    animation: fadein 0.4s 0.2s forwards;
+  }
+
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-toolbar span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .filter-input {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 5px 10px;
+    outline: none;
+    width: 200px;
+    transition: border-color 0.15s;
+  }
+
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-input::placeholder { color: var(--muted); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  thead th {
+    padding: 10px 1.25rem;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  thead th:hover { color: var(--text); }
+
+  thead th.sorted { color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 12px 1.25rem;
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .idx-cell { color: var(--muted); font-size: 12px; }
+
+  .ts-cell { color: #94a3b8; font-size: 12px; }
+
+  .count-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    max-width: 120px;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+
+  .count-num { min-width: 36px; font-size: 13px; }
+
+  .status-ok {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--success-dim);
+    color: var(--success);
+    letter-spacing: 0.06em;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .error-banner {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    color: #f87171;
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+
+  .sort-arrow { margin-left: 4px; opacity: 0.5; }
+  .sort-arrow.active { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ctrack / analysis monitor</div>
+  <div class="header-right">
+    <div class="live-dot"></div>
+    <span class="last-fetched" id="last-fetched">—</span>
+    <button class="refresh-btn" onclick="fetchData()">&#8635; refresh</button>
+  </div>
+</header>
+
+<main>
+  <p class="page-title">analysis_last_updt</p>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">total runs</div>
+      <div class="metric-value" id="m-total">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">latest count</div>
+      <div class="metric-value" id="m-count">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">last run (utc)</div>
+      <div class="metric-value sm" id="m-time">—</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-toolbar">
+      <span id="row-count">0 rows</span>
+      <input class="filter-input" type="text" placeholder="filter..." id="filter-input" oninput="renderTable()" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th onclick="setSort('idx')" id="th-idx">idx <span class="sort-arrow active" id="arr-idx">&#8595;</span></th>
+          <th onclick="setSort('last_updt')" id="th-last_updt">last_updt <span class="sort-arrow" id="arr-last_updt"></span></th>
+          <th onclick="setSort('count')" id="th-count">count <span class="sort-arrow" id="arr-count"></span></th>
+          <th>status</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body">
+        <tr><td colspan="4" class="empty-state">loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  let allData = [];
+  let sortField = 'idx';
+  let sortDir = 'desc';
+  let maxCount = 1;
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    return iso.replace('T', ' ').slice(0, 19) + ' UTC';
+  }
+
+  function setSort(field) {
+    if (sortField === field) {
+      sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+      sortField = field;
+      sortDir = 'desc';
+    }
+    ['idx', 'last_updt', 'count'].forEach(f => {
+      document.getElementById('th-' + f).classList.toggle('sorted', f === field);
+      const arr = document.getElementById('arr-' + f);
+      if (f === field) {
+        arr.textContent = sortDir === 'desc' ? \u8595: \u8593;
+        arr.classList.add('active');
+      } else {
+        arr.textContent = '';
+        arr.classList.remove('active');
+      }
+    });
+    renderTable();
+  }
+
+  function renderTable() {
+    const q = document.getElementById('filter-input').value.toLowerCase();
+    let rows = allData.filter(r =>
+      String(r.idx).includes(q) ||
+      (r.last_updt || '').toLowerCase().includes(q) ||
+      String(r.count).includes(q)
+    );
+    rows.sort((a, b) => {
+      let va = a[sortField], vb = b[sortField];
+      if (va === null) va = '';
+      if (vb === null) vb = '';
+      return sortDir === 'desc' ? (va < vb ? 1 : -1) : (va > vb ? 1 : -1);
+    });
+
+    document.getElementById('row-count').textContent = rows.length + ' row' + (rows.length !== 1 ? 's' : '');
+
+    const tbody = document.getElementById('tbl-body');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">no rows found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const pct = maxCount > 0 ? Math.round((r.count / maxCount) * 100) : 0;
+      return `<tr>
+        <td class="idx-cell">${r.idx}</td>
+        <td class="ts-cell">${fmt(r.last_updt)}</td>
+        <td>
+          <div class="count-cell">
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span class="count-num">${r.count}</span>
+          </div>
+        </td>
+        <td><span class="status-ok">ok</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function fetchData() {
+    const banner = document.getElementById('error-banner');
+    banner.style.display = 'none';
+    try {
+      const res = await fetch('/api/analysis_last_updt');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allData = await res.json();
+      maxCount = allData.length ? Math.max(...allData.map(r => r.count)) : 1;
+
+      document.getElementById('m-total').textContent = allData.length;
+      if (allData.length) {
+        const sorted = [...allData].sort((a, b) => (b.last_updt || '') > (a.last_updt || '') ? 1 : -1);
+        const latest = sorted[0];
+        document.getElementById('m-count').textContent = latest.count;
+        document.getElementById('m-time').textContent = fmt(latest.last_updt).slice(0, 16);
+      }
+      document.getElementById('last-fetched').textContent = 'fetched ' + new Date().toISOString().slice(11, 19) + ' UTC';
+      renderTable();
+    } catch (e) {
+      banner.style.display = 'block';
+      banner.textContent = 'error fetching data: ' + e.message;
+      document.getElementById('tbl-body').innerHTML = '<tr><td colspan="4" class="empty-state">failed to load</td></tr>';
+    }
+  }
+
+  fetchData();
+</script>
+</body>
+</html>
