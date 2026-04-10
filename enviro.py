@@ -15,7 +15,6 @@ class EnvKey(str, Enum):
     #SUPABASE_URL = "SUPABASE_URL"
     NEON_DATABASE_URL = "DATABASE_URL"
     OPENAI_API_KEY = "OPENAI_API_KEY"
-    NEON_DATABASE_URL_POOLER = "NEON_DATABASE_URL_POOLER"
 
 _keydict: dict[EnvKey, str] = {}
 _loaded = False
