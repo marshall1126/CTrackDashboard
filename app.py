@@ -23,7 +23,7 @@ async def root():
 async def api_analysis_last_updt():
     db_manager =  NeonManager(NeonConnectionMode.POOLER)
     db_manager.db_connect()
-    ok, records = db_manager.db_select(constants.TableNames.TBL_ANALYSIS_LAST_UPDT, limit=10, order_by='last_updt', order_dir="DESC")
+    ok, records = db_manager.db_select(constants.TableNames.TBL_ANALYSIS_LAST_UPDT, limit=20, order_by='last_updt', order_dir="DESC")
     db_manager.db_close()
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to fetch records")
