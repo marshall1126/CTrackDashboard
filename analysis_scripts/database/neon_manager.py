@@ -358,6 +358,7 @@ class NeonManager(BaseDatabaseManager):
         where: Optional[dict] = None,
         limit: Optional[int] = None,
         order_by: Optional[str] = None,
+        order_dir: Optional[str] = "ASC",  # ← add this
         dataclass: Optional[type[T]] = None,
     ) -> tuple[bool, list[Any]]:
         try:
@@ -379,7 +380,8 @@ class NeonManager(BaseDatabaseManager):
             if order_by:
                 if ' --' in order_by or ';' in order_by:
                     raise ValueError("Suspicious characters in order_by")
-                stmt += sql.SQL(" ORDER BY {}").format(sql.SQL(order_by))
+                direction = "DESC" if order_dir and order_dir.upper() == "DESC" else "ASC"
+                stmt += sql.SQL(" ORDER BY {} {}").format(sql.SQL(order_by), sql.SQL(direction))
 
             if limit is not None:
                 if not isinstance(limit, int) or limit < 0:
